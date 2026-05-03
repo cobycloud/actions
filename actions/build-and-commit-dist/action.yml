@@ -1,0 +1,90 @@
+name: Build and Commit Dist
+description: Build a Node project and commit generated distribution output when it changes.
+inputs:
+  node-version:
+    description: Node.js version to install.
+    required: false
+    default: "20"
+  working-directory:
+    description: Directory containing package.json.
+    required: false
+    default: client
+  install-command:
+    description: Dependency install command.
+    required: false
+    default: npm ci
+  build-command:
+    description: Build command.
+    required: false
+    default: npm run build
+  dist-path:
+    description: Path to generated output, relative to repository root.
+    required: false
+    default: client/dist
+  commit-message:
+    description: Commit message for generated output.
+    required: false
+    default: "chore(dist): update build output"
+  bot-name:
+    description: Git author name.
+    required: false
+    default: github-actions[bot]
+  bot-email:
+    description: Git author email.
+    required: false
+    default: github-actions[bot]@users.noreply.github.com
+outputs:
+  committed:
+    description: Whether a dist commit was created.
+    value: ${{ steps.commit.outputs.committed }}
+runs:
+  using: composite
+  steps:
+    - name: Check package manifest
+      id: package-json
+      shell: bash
+      run: |
+        if [[ -f "${{ inputs.working-directory }}/package.json" ]]; then
+          echo "present=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "present=false" >> "$GITHUB_OUTPUT"
+          echo "No package.json found at ${{ inputs.working-directory }}/package.json; skipping build."
+        fi
+
+    - name: Setup Node
+      if: ${{ steps.package-json.outputs.present == 'true' }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+    - name: Install dependencies
+      if: ${{ steps.package-json.outputs.present == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.install-command }}
+
+    - name: Build
+      if: ${{ steps.package-json.outputs.present == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.build-command }}
+
+    - name: Commit dist
+      id: commit
+      if: ${{ steps.package-json.outputs.present == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        git config user.name "${{ inputs.bot-name }}"
+        git config user.email "${{ inputs.bot-email }}"
+        git add -A "${{ inputs.dist-path }}"
+        if git diff --cached --quiet; then
+          echo "No dist changes to commit."
+          echo "committed=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        git commit -m "${{ inputs.commit-message }}"
+        git push
+        echo "committed=true" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,53 @@
+name: Setup Node Project
+description: Install Node dependencies and optionally run build/test commands in a package directory.
+inputs:
+  node-version:
+    description: Node.js version to install.
+    required: false
+    default: "20"
+  working-directory:
+    description: Directory containing package.json.
+    required: false
+    default: "."
+  install-command:
+    description: Dependency install command.
+    required: false
+    default: npm ci
+  build-command:
+    description: Optional build command. Leave empty to skip.
+    required: false
+    default: ""
+  test-command:
+    description: Optional test command. Leave empty to skip.
+    required: false
+    default: ""
+  cache:
+    description: Cache mode passed to actions/setup-node.
+    required: false
+    default: npm
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.cache }}
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.install-command }}
+
+    - name: Build
+      if: ${{ inputs.build-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.build-command }}
+
+    - name: Test
+      if: ${{ inputs.test-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.test-command }}

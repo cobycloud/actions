@@ -1,0 +1,64 @@
+name: Docker Compose Service
+description: Restart, rebuild, or collect logs for a Docker Compose service.
+inputs:
+  compose-command:
+    description: Docker Compose executable, usually docker compose or docker-compose.
+    required: false
+    default: docker compose
+  compose-file:
+    description: Optional compose file argument.
+    required: false
+    default: ""
+  service:
+    description: Service name.
+    required: true
+  operation:
+    description: One of restart, rebuild, logs.
+    required: false
+    default: restart
+  prune:
+    description: Run docker system prune before rebuilding/restarting.
+    required: false
+    default: "false"
+  logs-output:
+    description: File path for logs operation output.
+    required: false
+    default: compose-service.log
+runs:
+  using: composite
+  steps:
+    - name: Compose service operation
+      shell: bash
+      run: |
+        set -euo pipefail
+        compose='${{ inputs.compose-command }}'
+        file='${{ inputs.compose-file }}'
+        service='${{ inputs.service }}'
+        operation='${{ inputs.operation }}'
+        args=()
+        if [[ -n "$file" ]]; then
+          args+=("-f" "$file")
+        fi
+
+        if [[ "$operation" == "logs" ]]; then
+          $compose "${args[@]}" logs "$service" > "${{ inputs.logs-output }}"
+          exit 0
+        fi
+
+        if [[ "$operation" != "restart" && "$operation" != "rebuild" ]]; then
+          echo "Unsupported operation: $operation" >&2
+          exit 2
+        fi
+
+        $compose "${args[@]}" stop "$service" || true
+        $compose "${args[@]}" rm -f "$service" || true
+
+        if [[ "${{ inputs.prune }}" == "true" ]]; then
+          docker system prune -af || true
+        fi
+
+        if [[ "$operation" == "rebuild" ]]; then
+          $compose "${args[@]}" build "$service"
+        fi
+
+        $compose "${args[@]}" up -d --build --force-recreate --no-deps "$service"

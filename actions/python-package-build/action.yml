@@ -1,0 +1,46 @@
+name: Python Package Build
+description: Build a Python package with uv and optionally upload dist artifacts.
+inputs:
+  python-version:
+    description: Python version to install.
+    required: false
+    default: "3.12"
+  project-path:
+    description: Package project path.
+    required: false
+    default: "."
+  out-dir:
+    description: Distribution output directory.
+    required: false
+    default: dist
+  upload-artifact:
+    description: Upload the output directory as a workflow artifact.
+    required: false
+    default: "true"
+  artifact-name:
+    description: Artifact name.
+    required: false
+    default: python-dist
+runs:
+  using: composite
+  steps:
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Build package
+      shell: bash
+      run: uv build --project "${{ inputs.project-path }}" --out-dir "${{ inputs.out-dir }}"
+
+    - name: Upload dist
+      if: ${{ inputs.upload-artifact == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.out-dir }}

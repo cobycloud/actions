@@ -1,0 +1,69 @@
+name: Python uv
+description: Set up Python with uv, install dependencies, optionally compute monorepo PYTHONPATH, and run a command.
+inputs:
+  python-version:
+    description: Python version to install.
+    required: false
+    default: "3.12"
+  working-directory:
+    description: Directory where install and run commands execute.
+    required: false
+    default: "."
+  install-command:
+    description: Dependency installation command.
+    required: false
+    default: uv sync --all-groups --frozen
+  run-command:
+    description: Main validation command. Leave empty to skip.
+    required: false
+    default: uv run pytest
+  compute-monorepo-pythonpath:
+    description: Add repo root and pkgs/* package/src folders to PYTHONPATH.
+    required: false
+    default: "false"
+  uv-cache:
+    description: Enable astral-sh/setup-uv cache.
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: ${{ inputs.uv-cache }}
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Compute monorepo PYTHONPATH
+      if: ${{ inputs.compute-monorepo-pythonpath == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        PY_PATH="$GITHUB_WORKSPACE"
+        for base in "$GITHUB_WORKSPACE/pkgs/core" "$GITHUB_WORKSPACE/pkgs/apps" "$GITHUB_WORKSPACE/pkgs/engines" "$GITHUB_WORKSPACE/pkgs/base" "$GITHUB_WORKSPACE/pkgs/standards" "$GITHUB_WORKSPACE/pkgs/plugins" "$GITHUB_WORKSPACE/pkgs/community" "$GITHUB_WORKSPACE/pkgs/experimental"; do
+          if [[ -d "$base" ]]; then
+            for child in "$base"/*; do
+              [[ -d "$child" ]] || continue
+              PY_PATH="$PY_PATH:$child"
+              if [[ -d "$child/src" ]]; then
+                PY_PATH="$PY_PATH:$child/src"
+              fi
+            done
+          fi
+        done
+        echo "PYTHONPATH=$PY_PATH" >> "$GITHUB_ENV"
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.install-command }}
+
+    - name: Run command
+      if: ${{ inputs.run-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.run-command }}
