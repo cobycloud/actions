@@ -1,0 +1,65 @@
+name: Reusable Node Version Matrix
+
+on:
+  workflow_call:
+    inputs:
+      runners:
+        type: string
+        required: false
+        default: '["ubuntu-latest"]'
+      node-versions:
+        type: string
+        required: false
+        default: '["18","20","22"]'
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      install-command:
+        type: string
+        required: false
+        default: npm ci
+      lint-command:
+        type: string
+        required: false
+        default: npm run lint --if-present
+      typecheck-command:
+        type: string
+        required: false
+        default: npm run typecheck --if-present
+      test-command:
+        type: string
+        required: false
+        default: npm test --if-present
+      build-command:
+        type: string
+        required: false
+        default: npm run build --if-present
+      fail-fast:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  node-matrix:
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        runner: ${{ fromJSON(inputs.runners) }}
+        node-version: ${{ fromJSON(inputs.node-versions) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/node-lint-typecheck@main
+        with:
+          node-version: ${{ matrix.node-version }}
+          working-directory: ${{ inputs.working-directory }}
+          install-command: ${{ inputs.install-command }}
+          lint-command: ${{ inputs.lint-command }}
+          typecheck-command: ${{ inputs.typecheck-command }}
+          test-command: ${{ inputs.test-command }}
+          build-command: ${{ inputs.build-command }}

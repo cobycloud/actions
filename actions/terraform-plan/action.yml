@@ -1,0 +1,61 @@
+name: Terraform Plan
+description: Set up Terraform, run init/validate/plan, and upload a plan artifact.
+inputs:
+  working-directory:
+    description: Directory containing Terraform configuration.
+    required: false
+    default: "."
+  terraform-version:
+    description: Terraform version passed to setup-terraform.
+    required: false
+    default: latest
+  init-command:
+    description: Terraform init command.
+    required: false
+    default: terraform init
+  validate-command:
+    description: Terraform validate command. Leave empty to skip.
+    required: false
+    default: terraform validate
+  plan-command:
+    description: Terraform plan command.
+    required: false
+    default: terraform plan -out=tfplan
+  plan-path:
+    description: Terraform plan file to upload.
+    required: false
+    default: tfplan
+  artifact-name:
+    description: Uploaded plan artifact name.
+    required: false
+    default: terraform-plan
+runs:
+  using: composite
+  steps:
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform-version }}
+
+    - name: Terraform init
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.init-command }}
+
+    - name: Terraform validate
+      if: ${{ inputs.validate-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.validate-command }}
+
+    - name: Terraform plan
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.plan-command }}
+
+    - name: Upload Terraform plan
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.working-directory }}/${{ inputs.plan-path }}
+        if-no-files-found: error

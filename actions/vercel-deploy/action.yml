@@ -1,0 +1,63 @@
+name: Vercel Deploy
+description: Deploy a static app or frontend project to Vercel.
+inputs:
+  working-directory:
+    description: Project directory.
+    required: false
+    default: "."
+  setup-command:
+    description: Optional setup command.
+    required: false
+    default: ""
+  build-command:
+    description: Optional build command before deploy.
+    required: false
+    default: ""
+  vercel-command:
+    description: Vercel executable command.
+    required: false
+    default: npx vercel
+  production:
+    description: Deploy to production.
+    required: false
+    default: "true"
+  token:
+    description: Vercel token.
+    required: true
+  org-id:
+    description: Vercel org ID.
+    required: false
+    default: ""
+  project-id:
+    description: Vercel project ID.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Setup Vercel deploy
+      if: ${{ inputs.setup-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.setup-command }}
+
+    - name: Build static app
+      if: ${{ inputs.build-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.build-command }}
+
+    - name: Deploy Vercel project
+      shell: bash
+      env:
+        VERCEL_TOKEN: ${{ inputs.token }}
+        VERCEL_ORG_ID: ${{ inputs.org-id }}
+        VERCEL_PROJECT_ID: ${{ inputs.project-id }}
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        args=(deploy --token "$VERCEL_TOKEN")
+        if [[ "${{ inputs.production }}" == "true" ]]; then
+          args+=(--prod)
+        fi
+        ${{ inputs.vercel-command }} "${args[@]}"

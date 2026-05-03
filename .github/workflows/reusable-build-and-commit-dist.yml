@@ -1,0 +1,56 @@
+name: Reusable Build and Commit Dist
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      node-version:
+        type: string
+        required: false
+        default: "20"
+      working-directory:
+        type: string
+        required: false
+        default: client
+      install-command:
+        type: string
+        required: false
+        default: npm ci
+      build-command:
+        type: string
+        required: false
+        default: npm run build
+      dist-path:
+        type: string
+        required: false
+        default: client/dist
+      commit-message:
+        type: string
+        required: false
+        default: "chore(dist): update build output"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-commit:
+    runs-on: ${{ inputs.runner }}
+    concurrency:
+      group: build-and-commit-dist-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: cobycloud/actions/actions/build-and-commit-dist@main
+        with:
+          node-version: ${{ inputs.node-version }}
+          working-directory: ${{ inputs.working-directory }}
+          install-command: ${{ inputs.install-command }}
+          build-command: ${{ inputs.build-command }}
+          dist-path: ${{ inputs.dist-path }}
+          commit-message: ${{ inputs.commit-message }}

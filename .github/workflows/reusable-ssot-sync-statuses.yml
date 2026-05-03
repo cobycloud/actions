@@ -1,0 +1,55 @@
+name: Reusable SSOT Sync Statuses
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      registry-path:
+        type: string
+        required: false
+        default: .ssot/registry.json
+      ssot-command:
+        type: string
+        required: false
+        default: uv run ssot
+      sync-command:
+        type: string
+        required: false
+        default: ""
+      evidence-path:
+        type: string
+        required: false
+        default: ""
+      report-path:
+        type: string
+        required: false
+        default: ""
+      fail-on-changes:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  ssot-sync-statuses:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cobycloud/actions/actions/ssot-sync-statuses@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          registry-path: ${{ inputs.registry-path }}
+          ssot-command: ${{ inputs.ssot-command }}
+          sync-command: ${{ inputs.sync-command }}
+          evidence-path: ${{ inputs.evidence-path }}
+          report-path: ${{ inputs.report-path }}
+          fail-on-changes: ${{ inputs.fail-on-changes }}

@@ -1,0 +1,54 @@
+name: CodeQL
+description: Run CodeQL init, optional autobuild, and analyze for one or more languages.
+inputs:
+  languages:
+    description: Comma-separated CodeQL languages.
+    required: true
+  build-mode:
+    description: CodeQL build mode, such as none, autobuild, or manual.
+    required: false
+    default: autobuild
+  queries:
+    description: Optional CodeQL query suites or packs.
+    required: false
+    default: ""
+  config-file:
+    description: Optional CodeQL config file path.
+    required: false
+    default: ""
+  category:
+    description: Optional analysis category.
+    required: false
+    default: ""
+  upload:
+    description: Upload CodeQL results.
+    required: false
+    default: "true"
+  checkout:
+    description: Checkout repository before CodeQL.
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      if: ${{ inputs.checkout == 'true' }}
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v4
+      with:
+        languages: ${{ inputs.languages }}
+        build-mode: ${{ inputs.build-mode }}
+        queries: ${{ inputs.queries }}
+        config-file: ${{ inputs.config-file }}
+
+    - name: Autobuild
+      if: ${{ inputs.build-mode == 'autobuild' }}
+      uses: github/codeql-action/autobuild@v4
+
+    - name: Analyze
+      uses: github/codeql-action/analyze@v4
+      with:
+        category: ${{ inputs.category }}
+        upload: ${{ inputs.upload }}

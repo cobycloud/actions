@@ -1,0 +1,43 @@
+name: Reusable Release Attestation
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      release-assets-path:
+        type: string
+        required: false
+        default: release-assets/*
+      subject-name:
+        type: string
+        required: false
+        default: ""
+      push-to-registry:
+        type: boolean
+        required: false
+        default: false
+      show-summary:
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  release-attestation:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/release-attestation@main
+        with:
+          release-assets-path: ${{ inputs.release-assets-path }}
+          subject-name: ${{ inputs.subject-name }}
+          push-to-registry: ${{ inputs.push-to-registry }}
+          show-summary: ${{ inputs.show-summary }}

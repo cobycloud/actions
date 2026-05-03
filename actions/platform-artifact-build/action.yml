@@ -1,0 +1,97 @@
+name: Platform Artifact Build
+description: Run a platform build command and upload the produced artifact path.
+inputs:
+  working-directory:
+    description: Directory where commands execute.
+    required: false
+    default: "."
+  setup-command:
+    description: Optional setup command before the build.
+    required: false
+    default: ""
+  build-command:
+    description: Build command that produces the platform artifact.
+    required: true
+  linux-build-command:
+    description: Linux build command override.
+    required: false
+    default: ""
+  macos-build-command:
+    description: macOS build command override.
+    required: false
+    default: ""
+  windows-build-command:
+    description: Windows build command override.
+    required: false
+    default: ""
+  artifact-path:
+    description: File or directory to upload.
+    required: true
+  artifact-name:
+    description: Uploaded artifact name.
+    required: false
+    default: platform-artifact
+  retention-days:
+    description: Artifact retention days.
+    required: false
+    default: "30"
+runs:
+  using: composite
+  steps:
+    - name: Setup
+      if: ${{ inputs.setup-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.setup-command }}
+
+    - name: Build Linux artifact
+      if: ${{ runner.os == 'Linux' }}
+      shell: bash
+      env:
+        DEFAULT_COMMAND: ${{ inputs.build-command }}
+        OS_COMMAND: ${{ inputs.linux-build-command }}
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        command="$OS_COMMAND"
+        if [[ -z "$command" ]]; then
+          command="$DEFAULT_COMMAND"
+        fi
+        eval "$command"
+
+    - name: Build macOS artifact
+      if: ${{ runner.os == 'macOS' }}
+      shell: bash
+      env:
+        DEFAULT_COMMAND: ${{ inputs.build-command }}
+        OS_COMMAND: ${{ inputs.macos-build-command }}
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        command="$OS_COMMAND"
+        if [[ -z "$command" ]]; then
+          command="$DEFAULT_COMMAND"
+        fi
+        eval "$command"
+
+    - name: Build Windows artifact
+      if: ${{ runner.os == 'Windows' }}
+      shell: pwsh
+      env:
+        DEFAULT_COMMAND: ${{ inputs.build-command }}
+        OS_COMMAND: ${{ inputs.windows-build-command }}
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        $command = $env:OS_COMMAND
+        if (-not $command) {
+          $command = $env:DEFAULT_COMMAND
+        }
+        Invoke-Expression $command
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.artifact-path }}
+        retention-days: ${{ inputs.retention-days }}
+        if-no-files-found: error

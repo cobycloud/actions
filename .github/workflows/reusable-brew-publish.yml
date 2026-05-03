@@ -1,0 +1,56 @@
+name: Reusable Homebrew Publish
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      tap-repository:
+        type: string
+        required: true
+      tap-directory:
+        type: string
+        required: false
+        default: homebrew-tap
+      ref:
+        type: string
+        required: false
+        default: main
+      update-command:
+        type: string
+        required: true
+      commit-message:
+        type: string
+        required: false
+        default: Update Homebrew formulae
+      branch:
+        type: string
+        required: false
+        default: update-homebrew-formulae
+      title:
+        type: string
+        required: false
+        default: Update Homebrew formulae
+    secrets:
+      TAP_GITHUB_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  brew-publish:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: cobycloud/actions/actions/brew-publish@main
+        with:
+          tap-repository: ${{ inputs.tap-repository }}
+          tap-directory: ${{ inputs.tap-directory }}
+          ref: ${{ inputs.ref }}
+          update-command: ${{ inputs.update-command }}
+          commit-message: ${{ inputs.commit-message }}
+          branch: ${{ inputs.branch }}
+          title: ${{ inputs.title }}
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}

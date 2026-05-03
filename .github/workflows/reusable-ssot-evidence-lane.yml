@@ -1,0 +1,59 @@
+name: Reusable SSOT Evidence Lane
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      registry-path:
+        type: string
+        required: false
+        default: .ssot/registry.json
+      evidence-id:
+        type: string
+        required: false
+        default: ""
+      boundary-id:
+        type: string
+        required: false
+        default: ""
+      profile-id:
+        type: string
+        required: false
+        default: ""
+      evidence-command:
+        type: string
+        required: true
+      evidence-path:
+        type: string
+        required: false
+        default: evidence
+      artifact-name:
+        type: string
+        required: false
+        default: ssot-evidence
+
+permissions:
+  contents: read
+
+jobs:
+  ssot-evidence-lane:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cobycloud/actions/actions/ssot-evidence-lane@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          registry-path: ${{ inputs.registry-path }}
+          evidence-id: ${{ inputs.evidence-id }}
+          boundary-id: ${{ inputs.boundary-id }}
+          profile-id: ${{ inputs.profile-id }}
+          evidence-command: ${{ inputs.evidence-command }}
+          evidence-path: ${{ inputs.evidence-path }}
+          artifact-name: ${{ inputs.artifact-name }}

@@ -1,0 +1,82 @@
+name: Reusable Node Framework Version Matrix
+
+on:
+  workflow_call:
+    inputs:
+      runners:
+        type: string
+        required: false
+        default: '["ubuntu-latest"]'
+      node-versions:
+        type: string
+        required: false
+        default: '["18","20","22"]'
+      framework-cells:
+        type: string
+        required: false
+        default: '[{"framework":"generic","working-directory":"."}]'
+      install-command:
+        type: string
+        required: false
+        default: npm ci
+      lint-command:
+        type: string
+        required: false
+        default: ""
+      typecheck-command:
+        type: string
+        required: false
+        default: ""
+      test-command:
+        type: string
+        required: false
+        default: ""
+      build-command:
+        type: string
+        required: false
+        default: ""
+      artifact-path:
+        type: string
+        required: false
+        default: ""
+      artifact-name-prefix:
+        type: string
+        required: false
+        default: framework-build
+      fail-fast:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  node-framework-version-matrix:
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        runner: ${{ fromJSON(inputs.runners) }}
+        node-version: ${{ fromJSON(inputs.node-versions) }}
+        framework_cell: ${{ fromJSON(inputs.framework-cells) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/js-framework-ci@main
+        with:
+          framework: ${{ matrix.framework_cell.framework }}
+          node-version: ${{ matrix.node-version }}
+          working-directory: ${{ matrix.framework_cell.working-directory }}
+          install-command: ${{ inputs.install-command }}
+          lint-command: ${{ inputs.lint-command }}
+          typecheck-command: ${{ inputs.typecheck-command }}
+          test-command: ${{ inputs.test-command }}
+          build-command: ${{ inputs.build-command }}
+
+      - name: Upload framework artifact
+        if: ${{ inputs.artifact-path != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name-prefix }}-${{ matrix.framework_cell.framework }}-node-${{ matrix.node-version }}-${{ matrix.runner }}
+          path: ${{ matrix.framework_cell.working-directory }}/${{ inputs.artifact-path }}

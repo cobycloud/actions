@@ -1,0 +1,51 @@
+name: Git Commit Generated
+description: Commit and optionally push generated outputs.
+inputs:
+  paths:
+    description: Newline-delimited paths to add.
+    required: true
+  commit-message:
+    description: Commit message.
+    required: false
+    default: Update generated outputs
+  author-name:
+    description: Git author name.
+    required: false
+    default: github-actions[bot]
+  author-email:
+    description: Git author email.
+    required: false
+    default: github-actions[bot]@users.noreply.github.com
+  push:
+    description: Push commit to current branch.
+    required: false
+    default: "false"
+outputs:
+  committed:
+    description: Whether a commit was created.
+    value: ${{ steps.commit.outputs.committed }}
+runs:
+  using: composite
+  steps:
+    - name: Commit generated outputs
+      id: commit
+      shell: bash
+      env:
+        PATHS: ${{ inputs.paths }}
+      run: |
+        set -euo pipefail
+        git config user.name "${{ inputs.author-name }}"
+        git config user.email "${{ inputs.author-email }}"
+        while IFS= read -r item; do
+          [[ -n "$item" ]] || continue
+          git add "$item"
+        done <<< "$PATHS"
+        if git diff --cached --quiet; then
+          echo "committed=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        git commit -m "${{ inputs.commit-message }}"
+        if [[ "${{ inputs.push }}" == "true" ]]; then
+          git push
+        fi
+        echo "committed=true" >> "$GITHUB_OUTPUT"

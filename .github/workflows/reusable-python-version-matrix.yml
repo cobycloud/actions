@@ -1,0 +1,55 @@
+name: Reusable Python Version Matrix
+
+on:
+  workflow_call:
+    inputs:
+      runners:
+        type: string
+        required: false
+        default: '["ubuntu-latest"]'
+      python-versions:
+        type: string
+        required: false
+        default: '["3.10","3.11","3.12","3.13"]'
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      install-command:
+        type: string
+        required: false
+        default: uv sync --all-groups --frozen
+      run-command:
+        type: string
+        required: false
+        default: uv run pytest
+      compute-monorepo-pythonpath:
+        type: boolean
+        required: false
+        default: false
+      fail-fast:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  python-matrix:
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        runner: ${{ fromJSON(inputs.runners) }}
+        python-version: ${{ fromJSON(inputs.python-versions) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/python-uv@main
+        with:
+          python-version: ${{ matrix.python-version }}
+          working-directory: ${{ inputs.working-directory }}
+          install-command: ${{ inputs.install-command }}
+          run-command: ${{ inputs.run-command }}
+          compute-monorepo-pythonpath: ${{ inputs.compute-monorepo-pythonpath }}

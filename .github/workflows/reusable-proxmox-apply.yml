@@ -1,0 +1,50 @@
+name: Reusable Proxmox Apply
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      environment:
+        type: string
+        required: false
+        default: ""
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      setup-command:
+        type: string
+        required: false
+        default: ""
+      apply-command:
+        type: string
+        required: true
+      upload-artifact-path:
+        type: string
+        required: false
+        default: ""
+      artifact-name:
+        type: string
+        required: false
+        default: proxmox-apply
+
+permissions:
+  contents: read
+
+jobs:
+  proxmox-apply:
+    runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/proxmox-command@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          setup-command: ${{ inputs.setup-command }}
+          command: ${{ inputs.apply-command }}
+          upload-artifact-path: ${{ inputs.upload-artifact-path }}
+          artifact-name: ${{ inputs.artifact-name }}

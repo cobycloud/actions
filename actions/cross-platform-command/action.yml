@@ -1,0 +1,72 @@
+name: Cross Platform Command
+description: Run a default command with optional Linux, macOS, and Windows overrides.
+inputs:
+  working-directory:
+    description: Directory where commands execute.
+    required: false
+    default: "."
+  command:
+    description: Default command for all operating systems.
+    required: false
+    default: ""
+  linux-command:
+    description: Linux command override.
+    required: false
+    default: ""
+  macos-command:
+    description: macOS command override.
+    required: false
+    default: ""
+  windows-command:
+    description: Windows command override.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Run Linux command
+      if: ${{ runner.os == 'Linux' && (inputs.command != '' || inputs.linux-command != '') }}
+      shell: bash
+      env:
+        DEFAULT_COMMAND: ${{ inputs.command }}
+        OS_COMMAND: ${{ inputs.linux-command }}
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        command="$OS_COMMAND"
+        if [[ -z "$command" ]]; then
+          command="$DEFAULT_COMMAND"
+        fi
+        eval "$command"
+
+    - name: Run macOS command
+      if: ${{ runner.os == 'macOS' && (inputs.command != '' || inputs.macos-command != '') }}
+      shell: bash
+      env:
+        DEFAULT_COMMAND: ${{ inputs.command }}
+        OS_COMMAND: ${{ inputs.macos-command }}
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        command="$OS_COMMAND"
+        if [[ -z "$command" ]]; then
+          command="$DEFAULT_COMMAND"
+        fi
+        eval "$command"
+
+    - name: Run Windows command
+      if: ${{ runner.os == 'Windows' && (inputs.command != '' || inputs.windows-command != '') }}
+      shell: pwsh
+      env:
+        DEFAULT_COMMAND: ${{ inputs.command }}
+        OS_COMMAND: ${{ inputs.windows-command }}
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        $command = $env:OS_COMMAND
+        if (-not $command) {
+          $command = $env:DEFAULT_COMMAND
+        }
+        if (-not $command) {
+          exit 0
+        }
+        Invoke-Expression $command

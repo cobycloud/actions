@@ -1,0 +1,64 @@
+name: Reusable Docker Compose Service
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: deployment
+      compose-command:
+        type: string
+        required: false
+        default: docker compose
+      compose-file:
+        type: string
+        required: false
+        default: ""
+      service:
+        type: string
+        required: true
+      operation:
+        type: string
+        required: false
+        default: restart
+      prune:
+        type: boolean
+        required: false
+        default: false
+      logs-output:
+        type: string
+        required: false
+        default: compose-service.log
+      upload-logs:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  compose-service:
+    runs-on: ${{ inputs.runner }}
+    concurrency:
+      group: docker-compose-service-${{ inputs.service }}-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/docker-compose-service@main
+        with:
+          compose-command: ${{ inputs.compose-command }}
+          compose-file: ${{ inputs.compose-file }}
+          service: ${{ inputs.service }}
+          operation: ${{ inputs.operation }}
+          prune: ${{ inputs.prune }}
+          logs-output: ${{ inputs.logs-output }}
+
+      - name: Upload logs
+        if: ${{ inputs.upload-logs == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.service }}-compose-logs
+          path: ${{ inputs.logs-output }}

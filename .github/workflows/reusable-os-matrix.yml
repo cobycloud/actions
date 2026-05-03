@@ -1,0 +1,83 @@
+name: Reusable OS Matrix
+
+on:
+  workflow_call:
+    inputs:
+      ecosystem:
+        type: string
+        required: true
+      runners:
+        type: string
+        required: false
+        default: '["ubuntu-latest","windows-latest","macos-latest"]'
+      version:
+        type: string
+        required: false
+        default: ""
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      install-command:
+        type: string
+        required: false
+        default: ""
+      run-command:
+        type: string
+        required: false
+        default: ""
+      linux-command:
+        type: string
+        required: false
+        default: ""
+      macos-command:
+        type: string
+        required: false
+        default: ""
+      windows-command:
+        type: string
+        required: false
+        default: ""
+      compute-monorepo-pythonpath:
+        type: boolean
+        required: false
+        default: false
+      rust-components:
+        type: string
+        required: false
+        default: rustfmt,clippy
+      rust-targets:
+        type: string
+        required: false
+        default: ""
+      fail-fast:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  os-matrix:
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        runner: ${{ fromJSON(inputs.runners) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/os-matrix-cell@main
+        with:
+          ecosystem: ${{ inputs.ecosystem }}
+          version: ${{ inputs.version }}
+          working-directory: ${{ inputs.working-directory }}
+          install-command: ${{ inputs.install-command }}
+          run-command: ${{ inputs.run-command }}
+          linux-command: ${{ inputs.linux-command }}
+          macos-command: ${{ inputs.macos-command }}
+          windows-command: ${{ inputs.windows-command }}
+          compute-monorepo-pythonpath: ${{ inputs.compute-monorepo-pythonpath }}
+          rust-components: ${{ inputs.rust-components }}
+          rust-targets: ${{ inputs.rust-targets }}

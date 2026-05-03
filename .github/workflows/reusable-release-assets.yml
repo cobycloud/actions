@@ -1,0 +1,45 @@
+name: Reusable Release Assets
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      artifact-name:
+        type: string
+        required: false
+        default: ""
+      source-path:
+        type: string
+        required: false
+        default: release-assets
+      output-path:
+        type: string
+        required: false
+        default: release-assets-normalized
+      checksum-file:
+        type: string
+        required: false
+        default: SHA256SUMS
+      normalized-artifact-name:
+        type: string
+        required: false
+        default: release-assets
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  prepare-assets:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: cobycloud/actions/actions/release-assets@main
+        with:
+          artifact-name: ${{ inputs.artifact-name }}
+          source-path: ${{ inputs.source-path }}
+          output-path: ${{ inputs.output-path }}
+          checksum-file: ${{ inputs.checksum-file }}
+          normalized-artifact-name: ${{ inputs.normalized-artifact-name }}

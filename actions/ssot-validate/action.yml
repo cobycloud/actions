@@ -1,0 +1,48 @@
+name: SSOT Validate
+description: Validate an SSOT registry and optionally upload validation reports.
+inputs:
+  working-directory:
+    description: Repository directory where SSOT commands execute.
+    required: false
+    default: "."
+  registry-path:
+    description: SSOT registry path.
+    required: false
+    default: .ssot/registry.json
+  ssot-command:
+    description: SSOT executable command prefix.
+    required: false
+    default: uv run ssot
+  validate-command:
+    description: Full validation command override. Empty uses ssot-command and registry-path.
+    required: false
+    default: ""
+  report-path:
+    description: Optional validation report path to upload.
+    required: false
+    default: ""
+  artifact-name:
+    description: Uploaded report artifact name.
+    required: false
+    default: ssot-validation-report
+runs:
+  using: composite
+  steps:
+    - name: Validate SSOT registry
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        if [[ -n "${{ inputs.validate-command }}" ]]; then
+          ${{ inputs.validate-command }}
+        else
+          ${{ inputs.ssot-command }} validate --registry "${{ inputs.registry-path }}"
+        fi
+
+    - name: Upload SSOT validation report
+      if: ${{ inputs.report-path != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.working-directory }}/${{ inputs.report-path }}
+        if-no-files-found: warn

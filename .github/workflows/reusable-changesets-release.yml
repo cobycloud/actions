@@ -1,0 +1,67 @@
+name: Reusable Changesets Release
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      node-version:
+        type: string
+        required: false
+        default: "20"
+      package-directory:
+        type: string
+        required: false
+        default: "."
+      version-command:
+        type: string
+        required: false
+        default: npx changeset version
+      publish-command:
+        type: string
+        required: false
+        default: npx changeset publish
+      commit:
+        type: string
+        required: false
+        default: "chore: version packages"
+      title:
+        type: string
+        required: false
+        default: "chore: version packages"
+      create-github-releases:
+        type: boolean
+        required: false
+        default: false
+    secrets:
+      GH_TOKEN:
+        required: false
+      NPM_TOKEN:
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  changesets-release:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: cobycloud/actions/actions/changesets-release@main
+        with:
+          node-version: ${{ inputs.node-version }}
+          package-directory: ${{ inputs.package-directory }}
+          github-token: ${{ secrets.GH_TOKEN || github.token }}
+          npm-token: ${{ secrets.NPM_TOKEN }}
+          version-command: ${{ inputs.version-command }}
+          publish-command: ${{ inputs.publish-command }}
+          commit: ${{ inputs.commit }}
+          title: ${{ inputs.title }}
+          create-github-releases: ${{ inputs.create-github-releases }}

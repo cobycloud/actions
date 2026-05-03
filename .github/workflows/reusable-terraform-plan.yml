@@ -1,0 +1,56 @@
+name: Reusable Terraform Plan
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      terraform-version:
+        type: string
+        required: false
+        default: latest
+      init-command:
+        type: string
+        required: false
+        default: terraform init
+      validate-command:
+        type: string
+        required: false
+        default: terraform validate
+      plan-command:
+        type: string
+        required: false
+        default: terraform plan -out=tfplan
+      plan-path:
+        type: string
+        required: false
+        default: tfplan
+      artifact-name:
+        type: string
+        required: false
+        default: terraform-plan
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-plan:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/terraform-plan@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          terraform-version: ${{ inputs.terraform-version }}
+          init-command: ${{ inputs.init-command }}
+          validate-command: ${{ inputs.validate-command }}
+          plan-command: ${{ inputs.plan-command }}
+          plan-path: ${{ inputs.plan-path }}
+          artifact-name: ${{ inputs.artifact-name }}

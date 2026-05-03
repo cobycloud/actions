@@ -1,0 +1,41 @@
+name: tox CI
+description: Set up Python, install tox, and run tox environments.
+inputs:
+  python-version:
+    description: Python version used to run tox.
+    required: false
+    default: "3.12"
+  working-directory:
+    description: Directory containing tox.ini, pyproject.toml, or setup.cfg.
+    required: false
+    default: "."
+  install-command:
+    description: Command that installs tox and related plugins.
+    required: false
+    default: python -m pip install tox
+  tox-command:
+    description: Command used to run tox.
+    required: false
+    default: tox
+  cache:
+    description: Enable Python pip cache.
+    required: false
+    default: "pip"
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: ${{ inputs.cache }}
+
+    - name: Install tox
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.install-command }}
+
+    - name: Run tox
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.tox-command }}

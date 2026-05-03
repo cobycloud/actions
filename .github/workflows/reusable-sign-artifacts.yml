@@ -1,0 +1,62 @@
+name: Reusable Sign Artifacts
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      artifact-path:
+        type: string
+        required: true
+      cosign-version:
+        type: string
+        required: false
+        default: latest
+      recursive:
+        type: boolean
+        required: false
+        default: true
+      upload-signatures:
+        type: boolean
+        required: false
+        default: true
+      signatures-artifact-name:
+        type: string
+        required: false
+        default: artifact-signatures
+    secrets:
+      COSIGN_PRIVATE_KEY:
+        required: false
+      COSIGN_PASSWORD:
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  sign-artifacts:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/sign-artifacts@main
+        with:
+          artifact-path: ${{ inputs.artifact-path }}
+          cosign-version: ${{ inputs.cosign-version }}
+          key: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          password: ${{ secrets.COSIGN_PASSWORD }}
+          recursive: ${{ inputs.recursive }}
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.upload-signatures == true }}
+        with:
+          name: ${{ inputs.signatures-artifact-name }}
+          path: |
+            ${{ inputs.artifact-path }}/**/*.sig
+            ${{ inputs.artifact-path }}/**/*.crt
+            ${{ inputs.artifact-path }}*.sig
+            ${{ inputs.artifact-path }}*.crt
+          if-no-files-found: warn

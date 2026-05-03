@@ -1,0 +1,48 @@
+name: Snap Build
+description: Build Snap packages and upload .snap outputs.
+inputs:
+  working-directory:
+    description: Directory containing snapcraft.yaml.
+    required: false
+    default: "."
+  setup-command:
+    description: Optional setup command before snap build.
+    required: false
+    default: ""
+  build-command:
+    description: Command that builds the snap package.
+    required: false
+    default: snapcraft --destructive-mode
+  artifact-path:
+    description: Snap package path or glob to upload.
+    required: false
+    default: "*.snap"
+  artifact-name:
+    description: Uploaded artifact name.
+    required: false
+    default: snap-package
+  retention-days:
+    description: Artifact retention days.
+    required: false
+    default: "30"
+runs:
+  using: composite
+  steps:
+    - name: Setup Snap build
+      if: ${{ inputs.setup-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.setup-command }}
+
+    - name: Build Snap package
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.build-command }}
+
+    - name: Upload Snap package
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.working-directory }}/${{ inputs.artifact-path }}
+        retention-days: ${{ inputs.retention-days }}
+        if-no-files-found: error

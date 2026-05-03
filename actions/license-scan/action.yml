@@ -1,0 +1,167 @@
+name: License Scan
+description: Scan package manifests and license files for declared license metadata.
+inputs:
+  manifest-globs:
+    description: Newline-delimited manifest glob patterns.
+    required: false
+    default: |
+      package.json
+      **/package.json
+      pyproject.toml
+      **/pyproject.toml
+      Cargo.toml
+      **/Cargo.toml
+  license-file-globs:
+    description: Newline-delimited license file glob patterns.
+    required: false
+    default: |
+      LICENSE
+      LICENSE.*
+      COPYING
+      COPYING.*
+      NOTICE
+      NOTICE.*
+  allowed-licenses:
+    description: Optional newline-delimited allowlist of license identifiers.
+    required: false
+    default: ""
+  fail-on-missing:
+    description: Fail when a package manifest lacks license metadata.
+    required: false
+    default: "true"
+  fail-on-disallowed:
+    description: Fail when a license is outside allowed-licenses.
+    required: false
+    default: "true"
+  report-json:
+    description: JSON report output path.
+    required: false
+    default: reports/license-scan.json
+  report-md:
+    description: Markdown report output path.
+    required: false
+    default: reports/license-scan.md
+outputs:
+  report-json:
+    description: JSON report path.
+    value: ${{ inputs.report-json }}
+  report-md:
+    description: Markdown report path.
+    value: ${{ inputs.report-md }}
+runs:
+  using: composite
+  steps:
+    - name: Scan licenses
+      shell: bash
+      env:
+        MANIFEST_GLOBS: ${{ inputs.manifest-globs }}
+        LICENSE_FILE_GLOBS: ${{ inputs.license-file-globs }}
+        ALLOWED_LICENSES: ${{ inputs.allowed-licenses }}
+        FAIL_ON_MISSING: ${{ inputs.fail-on-missing }}
+        FAIL_ON_DISALLOWED: ${{ inputs.fail-on-disallowed }}
+        REPORT_JSON: ${{ inputs.report-json }}
+        REPORT_MD: ${{ inputs.report-md }}
+      run: |
+        set -euo pipefail
+        python - <<'PY'
+        from __future__ import annotations
+
+        import glob
+        import json
+        import os
+        import re
+        import tomllib
+        from pathlib import Path
+
+        skip_parts = {".git", "node_modules", ".venv", "venv", "dist", "build", "__pycache__"}
+
+        def patterns(name: str) -> list[str]:
+            return [line.strip() for line in os.environ.get(name, "").splitlines() if line.strip()]
+
+        def iter_files(name: str) -> list[Path]:
+            seen: set[Path] = set()
+            files: list[Path] = []
+            for pattern in patterns(name):
+                for raw in glob.glob(pattern, recursive=True):
+                    path = Path(raw)
+                    if not path.is_file() or path in seen or any(part in skip_parts for part in path.parts):
+                        continue
+                    seen.add(path)
+                    files.append(path)
+            return sorted(files, key=lambda p: p.as_posix())
+
+        def pyproject_license(data: dict) -> str:
+            project = data.get("project", {})
+            value = project.get("license")
+            if isinstance(value, str):
+                return value
+            if isinstance(value, dict):
+                return str(value.get("text") or value.get("file") or "")
+            poetry = data.get("tool", {}).get("poetry", {})
+            return str(poetry.get("license") or "")
+
+        def package_json_license(data: dict) -> str:
+            value = data.get("license")
+            if isinstance(value, str):
+                return value
+            if isinstance(value, dict):
+                return str(value.get("type") or "")
+            licenses = data.get("licenses")
+            if isinstance(licenses, list):
+                found = []
+                for item in licenses:
+                    if isinstance(item, str):
+                        found.append(item)
+                    elif isinstance(item, dict) and item.get("type"):
+                        found.append(str(item["type"]))
+                return " OR ".join(found)
+            return ""
+
+        def cargo_license(data: dict) -> str:
+            package = data.get("package", {})
+            return str(package.get("license") or package.get("license-file") or "")
+
+        allowed = {item.strip() for item in os.environ.get("ALLOWED_LICENSES", "").splitlines() if item.strip()}
+        records = []
+        for path in iter_files("MANIFEST_GLOBS"):
+            license_value = ""
+            kind = path.name
+            try:
+                if path.name == "package.json":
+                    license_value = package_json_license(json.loads(path.read_text(encoding="utf-8")))
+                elif path.name in {"pyproject.toml", "Cargo.toml"}:
+                    data = tomllib.loads(path.read_text(encoding="utf-8"))
+                    license_value = pyproject_license(data) if path.name == "pyproject.toml" else cargo_license(data)
+            except Exception as exc:
+                records.append({"path": path.as_posix(), "kind": kind, "license": "", "status": "parse_error", "detail": str(exc)})
+                continue
+            status = "ok"
+            detail = ""
+            if not license_value:
+                status = "missing"
+                detail = "No license metadata declared."
+            elif allowed and license_value not in allowed:
+                status = "disallowed"
+                detail = "License is not in allowed-licenses."
+            records.append({"path": path.as_posix(), "kind": kind, "license": license_value, "status": status, "detail": detail})
+
+        license_files = [p.as_posix() for p in iter_files("LICENSE_FILE_GLOBS")]
+        failures = [
+            r for r in records
+            if (r["status"] == "missing" and os.environ["FAIL_ON_MISSING"] == "true")
+            or (r["status"] == "disallowed" and os.environ["FAIL_ON_DISALLOWED"] == "true")
+            or r["status"] == "parse_error"
+        ]
+        report = {"records": records, "license_files": license_files, "failures": failures}
+        json_path = Path(os.environ["REPORT_JSON"])
+        md_path = Path(os.environ["REPORT_MD"])
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        md_path.parent.mkdir(parents=True, exist_ok=True)
+        json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        lines = ["# License Scan", "", f"- Manifests: {len(records)}", f"- License files: {len(license_files)}", f"- Failures: {len(failures)}", "", "| Path | License | Status |", "| --- | --- | --- |"]
+        for record in records:
+            lines.append(f"| `{record['path']}` | `{record['license'] or 'missing'}` | {record['status']} |")
+        md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        if failures:
+            raise SystemExit(f"License scan failed with {len(failures)} failure(s). See {json_path}.")
+        PY

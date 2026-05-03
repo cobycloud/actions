@@ -1,0 +1,119 @@
+name: JavaScript Framework CI
+description: Run install, lint, typecheck, test, and build checks for Vite, Svelte, Vue, React, and generic Node frontends.
+inputs:
+  framework:
+    description: Framework preset name.
+    required: false
+    default: generic
+  node-version:
+    description: Node.js version to install.
+    required: false
+    default: "20"
+  working-directory:
+    description: Directory containing package.json.
+    required: false
+    default: "."
+  install-command:
+    description: Dependency install command.
+    required: false
+    default: npm ci
+  lint-command:
+    description: Lint command override. Leave empty to use preset.
+    required: false
+    default: ""
+  typecheck-command:
+    description: Typecheck command override. Leave empty to use preset.
+    required: false
+    default: ""
+  test-command:
+    description: Test command override. Leave empty to use preset.
+    required: false
+    default: ""
+  build-command:
+    description: Build command override. Leave empty to use preset.
+    required: false
+    default: ""
+  cache:
+    description: Cache mode passed to actions/setup-node.
+    required: false
+    default: npm
+  cache-dependency-path:
+    description: Dependency file path for setup-node cache.
+    required: false
+    default: package-lock.json
+runs:
+  using: composite
+  steps:
+    - name: Resolve framework commands
+      id: commands
+      shell: bash
+      run: |
+        set -euo pipefail
+        framework="${{ inputs.framework }}"
+        lint="${{ inputs.lint-command }}"
+        typecheck="${{ inputs.typecheck-command }}"
+        test="${{ inputs.test-command }}"
+        build="${{ inputs.build-command }}"
+        if [[ -z "$lint" ]]; then
+          lint="npm run lint --if-present"
+        fi
+        if [[ -z "$typecheck" ]]; then
+          case "$framework" in
+            svelte) typecheck="npm run check --if-present" ;;
+            vue) typecheck="npm run type-check --if-present" ;;
+            react|vite|generic) typecheck="npm run typecheck --if-present" ;;
+            *) typecheck="npm run typecheck --if-present" ;;
+          esac
+        fi
+        if [[ -z "$test" ]]; then
+          test="npm test --if-present"
+        fi
+        if [[ -z "$build" ]]; then
+          build="npm run build --if-present"
+        fi
+        {
+          echo "lint<<EOF"
+          echo "$lint"
+          echo "EOF"
+          echo "typecheck<<EOF"
+          echo "$typecheck"
+          echo "EOF"
+          echo "test<<EOF"
+          echo "$test"
+          echo "EOF"
+          echo "build<<EOF"
+          echo "$build"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.cache }}
+        cache-dependency-path: ${{ inputs.working-directory }}/${{ inputs.cache-dependency-path }}
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.install-command }}
+
+    - name: Lint
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ steps.commands.outputs.lint }}
+
+    - name: Typecheck
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ steps.commands.outputs.typecheck }}
+
+    - name: Test
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ steps.commands.outputs.test }}
+
+    - name: Build
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ steps.commands.outputs.build }}

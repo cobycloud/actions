@@ -1,0 +1,39 @@
+name: PyPI Publish
+description: Publish Python distributions to PyPI or TestPyPI using trusted publishing or token fallback.
+inputs:
+  packages-dir:
+    description: Directory or glob containing distribution files.
+    required: false
+    default: dist
+  repository-url:
+    description: Optional repository URL, such as https://test.pypi.org/legacy/.
+    required: false
+    default: ""
+  password:
+    description: Optional PyPI API token. Leave empty for trusted publishing.
+    required: false
+    default: ""
+  skip-existing:
+    description: Do not fail when a file already exists.
+    required: false
+    default: "false"
+  verbose:
+    description: Enable verbose upload output.
+    required: false
+    default: "false"
+  print-hash:
+    description: Print hashes for uploaded distributions.
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Publish distributions
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: ${{ inputs.packages-dir }}
+        repository-url: ${{ inputs.repository-url }}
+        password: ${{ inputs.password }}
+        skip-existing: ${{ inputs.skip-existing }}
+        verbose: ${{ inputs.verbose }}
+        print-hash: ${{ inputs.print-hash }}

@@ -1,0 +1,52 @@
+name: Reusable CodeQL
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      languages:
+        type: string
+        required: true
+      build-mode:
+        type: string
+        required: false
+        default: autobuild
+      queries:
+        type: string
+        required: false
+        default: ""
+      config-file:
+        type: string
+        required: false
+        default: ""
+      category:
+        type: string
+        required: false
+        default: ""
+      upload:
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  codeql:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/codeql@main
+        with:
+          languages: ${{ inputs.languages }}
+          build-mode: ${{ inputs.build-mode }}
+          queries: ${{ inputs.queries }}
+          config-file: ${{ inputs.config-file }}
+          category: ${{ inputs.category }}
+          upload: ${{ inputs.upload }}

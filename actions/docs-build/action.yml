@@ -1,0 +1,42 @@
+name: Docs Build
+description: Build documentation with caller-provided commands and upload the generated site.
+inputs:
+  working-directory:
+    description: Documentation project directory.
+    required: false
+    default: "."
+  setup-command:
+    description: Optional setup command.
+    required: false
+    default: ""
+  build-command:
+    description: Documentation build command.
+    required: true
+  output-path:
+    description: Built documentation output path.
+    required: false
+    default: site
+  artifact-name:
+    description: Uploaded artifact name.
+    required: false
+    default: docs-site
+runs:
+  using: composite
+  steps:
+    - name: Setup docs
+      if: ${{ inputs.setup-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.setup-command }}
+
+    - name: Build docs
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.build-command }}
+
+    - name: Upload docs artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.working-directory }}/${{ inputs.output-path }}
+        if-no-files-found: error

@@ -1,0 +1,65 @@
+name: Android Artifact Build
+description: Set up Java/Gradle, build Android APK or AAB artifacts, and upload outputs.
+inputs:
+  working-directory:
+    description: Android project directory.
+    required: false
+    default: "."
+  java-version:
+    description: Java version for Android builds.
+    required: false
+    default: "17"
+  java-distribution:
+    description: Java distribution for setup-java.
+    required: false
+    default: temurin
+  setup-command:
+    description: Optional setup command before Gradle.
+    required: false
+    default: ""
+  gradle-command:
+    description: Gradle build command.
+    required: false
+    default: ./gradlew assembleRelease
+  artifact-path:
+    description: APK/AAB artifact path or glob.
+    required: false
+    default: "**/build/outputs/**/*.apk"
+  artifact-name:
+    description: Uploaded artifact name.
+    required: false
+    default: android-artifact
+  retention-days:
+    description: Artifact retention days.
+    required: false
+    default: "30"
+runs:
+  using: composite
+  steps:
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: ${{ inputs.java-distribution }}
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+
+    - name: Setup
+      if: ${{ inputs.setup-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.setup-command }}
+
+    - name: Build Android artifact
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.gradle-command }}
+
+    - name: Upload Android artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.artifact-path }}
+        retention-days: ${{ inputs.retention-days }}
+        if-no-files-found: error

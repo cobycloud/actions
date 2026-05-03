@@ -1,0 +1,71 @@
+name: Reusable tox Matrix
+
+on:
+  workflow_call:
+    inputs:
+      runners:
+        type: string
+        required: false
+        default: '["ubuntu-latest"]'
+      python-versions:
+        type: string
+        required: false
+        default: '["3.10","3.11","3.12","3.13"]'
+      tox-envs:
+        type: string
+        required: false
+        default: '[""]'
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      install-command:
+        type: string
+        required: false
+        default: python -m pip install tox
+      tox-command-base:
+        type: string
+        required: false
+        default: tox
+      fail-fast:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  tox-matrix:
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        runner: ${{ fromJSON(inputs.runners) }}
+        python-version: ${{ fromJSON(inputs.python-versions) }}
+        tox_env: ${{ fromJSON(inputs.tox-envs) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install tox
+        shell: bash
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.install-command }}
+
+      - name: Run tox
+        shell: bash
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          set -euo pipefail
+          tox_env="${{ matrix.tox_env }}"
+          if [[ -n "$tox_env" ]]; then
+            ${{ inputs.tox-command-base }} -e "$tox_env"
+          else
+            ${{ inputs.tox-command-base }}
+          fi

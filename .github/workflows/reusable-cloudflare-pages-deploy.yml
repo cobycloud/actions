@@ -1,0 +1,57 @@
+name: Reusable Cloudflare Pages Deploy
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      setup-command:
+        type: string
+        required: false
+        default: ""
+      build-command:
+        type: string
+        required: false
+        default: ""
+      output-path:
+        type: string
+        required: false
+        default: dist
+      project-name:
+        type: string
+        required: true
+      branch:
+        type: string
+        required: false
+        default: ""
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  cloudflare-pages-deploy:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/cloudflare-pages-deploy@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          setup-command: ${{ inputs.setup-command }}
+          build-command: ${{ inputs.build-command }}
+          output-path: ${{ inputs.output-path }}
+          project-name: ${{ inputs.project-name }}
+          branch: ${{ inputs.branch }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

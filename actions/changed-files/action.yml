@@ -1,0 +1,94 @@
+name: Changed Files
+description: Detect changed files and derive changed package/app cells from configured roots.
+inputs:
+  base-ref:
+    description: Base ref for diff.
+    required: false
+    default: origin/main
+  head-ref:
+    description: Head ref for diff.
+    required: false
+    default: HEAD
+  package-globs:
+    description: Newline-delimited package/app directory globs.
+    required: false
+    default: |
+      packages/*
+      apps/*
+      pkgs/*/*
+  ecosystem:
+    description: Ecosystem label for derived package cells.
+    required: false
+    default: generic
+outputs:
+  changed-files-json:
+    description: JSON array of changed files.
+    value: ${{ steps.changed.outputs.changed_files_json }}
+  package-cells-json:
+    description: JSON array of changed package cells.
+    value: ${{ steps.changed.outputs.package_cells_json }}
+  changed-count:
+    description: Number of changed files.
+    value: ${{ steps.changed.outputs.changed_count }}
+  package-count:
+    description: Number of changed package cells.
+    value: ${{ steps.changed.outputs.package_count }}
+runs:
+  using: composite
+  steps:
+    - name: Detect changed files
+      id: changed
+      shell: bash
+      env:
+        BASE_REF: ${{ inputs.base-ref }}
+        HEAD_REF: ${{ inputs.head-ref }}
+        PACKAGE_GLOBS: ${{ inputs.package-globs }}
+        ECOSYSTEM: ${{ inputs.ecosystem }}
+      run: |
+        set -euo pipefail
+        node <<'NODE'
+        const fs = require("fs");
+        const cp = require("child_process");
+        const path = require("path");
+        const base = process.env.BASE_REF;
+        const head = process.env.HEAD_REF;
+        const changed = cp.execFileSync("git", ["diff", "--name-only", base, head], {encoding: "utf8"})
+          .split(/\r?\n/).filter(Boolean).map(p => p.replaceAll("\\", "/"));
+        const globs = process.env.PACKAGE_GLOBS.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+        function globDirs(pattern) {
+          const parts = pattern.replaceAll("\\", "/").split("/").filter(Boolean);
+          let dirs = ["."];
+          for (const part of parts) {
+            const next = [];
+            for (const dir of dirs) {
+              if (part === "*") {
+                if (!fs.existsSync(dir)) continue;
+                for (const entry of fs.readdirSync(dir, {withFileTypes: true})) {
+                  if (entry.isDirectory()) next.push(path.posix.join(dir === "." ? "" : dir, entry.name));
+                }
+              } else {
+                const candidate = path.posix.join(dir === "." ? "" : dir, part);
+                if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) next.push(candidate);
+              }
+            }
+            dirs = next;
+          }
+          return dirs.map(d => d.replace(/^\.\//, ""));
+        }
+        const cells = [];
+        const seen = new Set();
+        for (const glob of globs) {
+          for (const dir of globDirs(glob)) {
+            if (seen.has(dir)) continue;
+            if (!changed.some(file => file === dir || file.startsWith(dir + "/"))) continue;
+            seen.add(dir);
+            cells.push({name: path.posix.basename(dir), path: dir, ecosystem: process.env.ECOSYSTEM || "generic"});
+          }
+        }
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, [
+          `changed_files_json=${JSON.stringify(changed)}`,
+          `package_cells_json=${JSON.stringify(cells)}`,
+          `changed_count=${changed.length}`,
+          `package_count=${cells.length}`
+        ].join("\n") + "\n");
+        NODE

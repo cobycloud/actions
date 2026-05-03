@@ -1,0 +1,43 @@
+name: Monorepo Release Train
+description: Execute an ordered command for each package cell in a release train.
+inputs:
+  package-cells:
+    description: JSON array of package cells with name/path fields.
+    required: true
+  command:
+    description: Command executed in each package path. The PACKAGE_NAME and PACKAGE_PATH env vars are set.
+    required: true
+  setup-command:
+    description: Optional setup command before package iteration.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Setup release train
+      if: ${{ inputs.setup-command != '' }}
+      shell: bash
+      run: ${{ inputs.setup-command }}
+
+    - name: Run package train
+      shell: bash
+      env:
+        PACKAGE_CELLS: ${{ inputs.package-cells }}
+        TRAIN_COMMAND: ${{ inputs.command }}
+      run: |
+        set -euo pipefail
+        node <<'NODE'
+        const cp = require("child_process");
+        const cells = JSON.parse(process.env.PACKAGE_CELLS || "[]");
+        for (const cell of cells) {
+          const name = cell.name || cell.path;
+          const cwd = cell.path || ".";
+          console.log(`Running release train step for ${name} in ${cwd}`);
+          cp.execSync(process.env.TRAIN_COMMAND, {
+            cwd,
+            stdio: "inherit",
+            shell: true,
+            env: {...process.env, PACKAGE_NAME: name, PACKAGE_PATH: cwd}
+          });
+        }
+        NODE

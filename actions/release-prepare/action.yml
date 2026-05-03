@@ -1,0 +1,112 @@
+name: Release Prepare
+description: Compute release tag/name, validate release metadata, and generate release notes.
+inputs:
+  version:
+    description: Release version without tag prefix.
+    required: true
+  tag-prefix:
+    description: Prefix used when computing the release tag.
+    required: false
+    default: v
+  release-name:
+    description: Explicit release display name. Defaults to computed tag.
+    required: false
+    default: ""
+  changelog-path:
+    description: Changelog file used to extract release notes.
+    required: false
+    default: CHANGELOG.md
+  release-notes-output:
+    description: File where release notes should be written.
+    required: false
+    default: release-notes.md
+  fallback-notes:
+    description: Notes used when the changelog does not contain a matching section.
+    required: false
+    default: ""
+  validate-clean:
+    description: Fail if the git working tree is dirty.
+    required: false
+    default: "false"
+  validate-version-files:
+    description: Newline-delimited files that must contain the target version.
+    required: false
+    default: ""
+outputs:
+  version:
+    description: Release version.
+    value: ${{ steps.prepare.outputs.version }}
+  tag-name:
+    description: Computed tag name.
+    value: ${{ steps.prepare.outputs.tag-name }}
+  release-name:
+    description: Computed release display name.
+    value: ${{ steps.prepare.outputs.release-name }}
+  release-notes:
+    description: Release notes output path.
+    value: ${{ steps.prepare.outputs.release-notes }}
+runs:
+  using: composite
+  steps:
+    - name: Prepare release metadata
+      id: prepare
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        TAG_PREFIX: ${{ inputs.tag-prefix }}
+        RELEASE_NAME: ${{ inputs.release-name }}
+        CHANGELOG_PATH: ${{ inputs.changelog-path }}
+        RELEASE_NOTES_OUTPUT: ${{ inputs.release-notes-output }}
+        FALLBACK_NOTES: ${{ inputs.fallback-notes }}
+        VALIDATE_CLEAN: ${{ inputs.validate-clean }}
+        VALIDATE_VERSION_FILES: ${{ inputs.validate-version-files }}
+      run: |
+        set -euo pipefail
+        if [[ "$VALIDATE_CLEAN" == "true" ]] && ! git diff --quiet --ignore-submodules --; then
+          echo "Working tree has uncommitted changes." >&2
+          git status --short >&2
+          exit 1
+        fi
+
+        python - <<'PY'
+        from __future__ import annotations
+
+        import os
+        import re
+        from pathlib import Path
+
+        version = os.environ["VERSION"]
+        tag = f"{os.environ['TAG_PREFIX']}{version}"
+        release_name = os.environ["RELEASE_NAME"] or tag
+        changelog = Path(os.environ["CHANGELOG_PATH"])
+        output = Path(os.environ["RELEASE_NOTES_OUTPUT"])
+        fallback = os.environ["FALLBACK_NOTES"] or f"Release {tag}"
+
+        for raw in os.environ.get("VALIDATE_VERSION_FILES", "").splitlines():
+            path = Path(raw.strip())
+            if not path:
+                continue
+            if not path.exists():
+                raise SystemExit(f"Version validation file does not exist: {path}")
+            if version not in path.read_text(encoding="utf-8", errors="replace"):
+                raise SystemExit(f"Version {version} not found in {path}")
+
+        notes = fallback
+        if changelog.exists():
+            text = changelog.read_text(encoding="utf-8", errors="replace")
+            heading = re.compile(rf"^##+\s+\[?v?{re.escape(version)}\]?(?:\s+-\s+.*)?\s*$", re.M)
+            match = heading.search(text)
+            if match:
+                next_heading = re.search(r"^##+\s+", text[match.end():], re.M)
+                end = match.end() + next_heading.start() if next_heading else len(text)
+                notes = text[match.end():end].strip() or fallback
+
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(notes.rstrip() + "\n", encoding="utf-8")
+
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+            fh.write(f"version={version}\n")
+            fh.write(f"tag-name={tag}\n")
+            fh.write(f"release-name={release_name}\n")
+            fh.write(f"release-notes={output.as_posix()}\n")
+        PY

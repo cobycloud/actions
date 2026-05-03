@@ -1,0 +1,80 @@
+name: crates.io Publish
+description: Publish a Rust crate with cargo publish.
+inputs:
+  rust-toolchain:
+    description: Rust toolchain to install.
+    required: false
+    default: stable
+  working-directory:
+    description: Directory containing Cargo.toml.
+    required: false
+    default: "."
+  cargo-token:
+    description: crates.io or registry token.
+    required: true
+  registry:
+    description: Optional Cargo registry name. Leave empty for crates.io.
+    required: false
+    default: ""
+  package:
+    description: Optional package name for workspaces.
+    required: false
+    default: ""
+  features:
+    description: Optional feature flags.
+    required: false
+    default: ""
+  all-features:
+    description: Publish with --all-features.
+    required: false
+    default: "false"
+  no-default-features:
+    description: Publish with --no-default-features.
+    required: false
+    default: "false"
+  dry-run:
+    description: Run cargo publish with --dry-run.
+    required: false
+    default: "false"
+  allow-dirty:
+    description: Run cargo publish with --allow-dirty.
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ inputs.rust-toolchain }}
+
+    - name: Publish crate
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ inputs.cargo-token }}
+      run: |
+        set -euo pipefail
+        args=()
+        if [[ -n "${{ inputs.registry }}" ]]; then
+          args+=(--registry "${{ inputs.registry }}")
+        fi
+        if [[ -n "${{ inputs.package }}" ]]; then
+          args+=(-p "${{ inputs.package }}")
+        fi
+        if [[ -n "${{ inputs.features }}" ]]; then
+          args+=(--features "${{ inputs.features }}")
+        fi
+        if [[ "${{ inputs.all-features }}" == "true" ]]; then
+          args+=(--all-features)
+        fi
+        if [[ "${{ inputs.no-default-features }}" == "true" ]]; then
+          args+=(--no-default-features)
+        fi
+        if [[ "${{ inputs.dry-run }}" == "true" ]]; then
+          args+=(--dry-run)
+        fi
+        if [[ "${{ inputs.allow-dirty }}" == "true" ]]; then
+          args+=(--allow-dirty)
+        fi
+        cargo publish "${args[@]}"

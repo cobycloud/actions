@@ -1,0 +1,41 @@
+name: Workflow Dispatch Batches
+description: Dispatch child workflows from a JSON batch list.
+inputs:
+  batches-json:
+    description: JSON array of workflow dispatch objects.
+    required: true
+  token:
+    description: GitHub token with workflow dispatch permission.
+    required: true
+  repo:
+    description: Repository in owner/name form. Empty uses current repository.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Dispatch workflow batches
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        BATCHES_JSON: ${{ inputs.batches-json }}
+        TARGET_REPO: ${{ inputs.repo }}
+      run: |
+        set -euo pipefail
+        node <<'NODE'
+        const cp = require("child_process");
+        const batches = JSON.parse(process.env.BATCHES_JSON || "[]");
+        const repo = process.env.TARGET_REPO || process.env.GITHUB_REPOSITORY;
+        for (const batch of batches) {
+          const workflow = batch.workflow;
+          const ref = batch.ref || "main";
+          const inputs = batch.inputs || {};
+          if (!workflow) throw new Error("batch.workflow is required");
+          const args = ["workflow", "run", workflow, "--repo", repo, "--ref", ref];
+          for (const [key, value] of Object.entries(inputs)) {
+            args.push("-f", `${key}=${value}`);
+          }
+          console.log(`Dispatching ${workflow} on ${ref}`);
+          cp.execFileSync("gh", args, {stdio: "inherit", env: process.env});
+        }
+        NODE

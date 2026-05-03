@@ -1,0 +1,44 @@
+name: uv Monorepo CI
+description: Run uv install, compile, test, docs, and build commands for one package cell.
+inputs:
+  python-version:
+    description: Python version to install.
+    required: false
+    default: "3.12"
+  package-path:
+    description: Package directory.
+    required: false
+    default: "."
+  install-command:
+    description: uv install command.
+    required: false
+    default: uv sync --all-groups --frozen
+  compile-command:
+    description: Compile command. Leave empty to skip.
+    required: false
+    default: uv run python -m compileall .
+  test-command:
+    description: Test command. Leave empty to skip.
+    required: false
+    default: uv run pytest
+  docs-command:
+    description: Docs command. Leave empty to skip.
+    required: false
+    default: ""
+  build-command:
+    description: Build command. Leave empty to skip.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - uses: cobycloud/actions/actions/python-package-ci@main
+      with:
+        python-version: ${{ inputs.python-version }}
+        package-path: ${{ inputs.package-path }}
+        install-command: ${{ inputs.install-command }}
+        compile-command: ${{ inputs.compile-command }}
+        test-command: ${{ inputs.test-command }}
+        docs-command: ${{ inputs.docs-command }}
+        build-command: ${{ inputs.build-command }}
+        compute-monorepo-pythonpath: true

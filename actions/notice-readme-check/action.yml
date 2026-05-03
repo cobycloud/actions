@@ -1,0 +1,135 @@
+name: Notice README Check
+description: Verify README, NOTICE, LICENSE, and package metadata consistency.
+inputs:
+  package-roots:
+    description: Newline-delimited package root directories.
+    required: false
+    default: "."
+  require-notice:
+    description: Require NOTICE file in each package root.
+    required: false
+    default: "false"
+  require-license:
+    description: Require LICENSE file in each package root.
+    required: false
+    default: "true"
+  require-readme:
+    description: Require README file in each package root.
+    required: false
+    default: "true"
+  package-name-required-in-readme:
+    description: Require manifest package name to appear in README.
+    required: false
+    default: "true"
+  report-json:
+    description: JSON report output path.
+    required: false
+    default: reports/notice-readme-check.json
+  report-md:
+    description: Markdown report output path.
+    required: false
+    default: reports/notice-readme-check.md
+outputs:
+  report-json:
+    description: JSON report path.
+    value: ${{ inputs.report-json }}
+  report-md:
+    description: Markdown report path.
+    value: ${{ inputs.report-md }}
+runs:
+  using: composite
+  steps:
+    - name: Check README/NOTICE/LICENSE consistency
+      shell: bash
+      env:
+        PACKAGE_ROOTS: ${{ inputs.package-roots }}
+        REQUIRE_NOTICE: ${{ inputs.require-notice }}
+        REQUIRE_LICENSE: ${{ inputs.require-license }}
+        REQUIRE_README: ${{ inputs.require-readme }}
+        PACKAGE_NAME_REQUIRED_IN_README: ${{ inputs.package-name-required-in-readme }}
+        REPORT_JSON: ${{ inputs.report-json }}
+        REPORT_MD: ${{ inputs.report-md }}
+      run: |
+        set -euo pipefail
+        python - <<'PY'
+        from __future__ import annotations
+
+        import json
+        import os
+        import tomllib
+        from pathlib import Path
+
+        def truth(name: str) -> bool:
+            return os.environ.get(name, "false").lower() == "true"
+
+        def roots() -> list[Path]:
+            out = []
+            for raw in os.environ["PACKAGE_ROOTS"].splitlines():
+                value = raw.strip()
+                if value:
+                    out.append(Path(value))
+            return out or [Path(".")]
+
+        def first_existing(root: Path, names: tuple[str, ...]) -> Path | None:
+            for name in names:
+                path = root / name
+                if path.exists():
+                    return path
+            return None
+
+        def package_name(root: Path) -> str:
+            package_json = root / "package.json"
+            if package_json.exists():
+                return json.loads(package_json.read_text(encoding="utf-8")).get("name", "")
+            pyproject = root / "pyproject.toml"
+            if pyproject.exists():
+                data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+                return data.get("project", {}).get("name") or data.get("tool", {}).get("poetry", {}).get("name") or ""
+            cargo = root / "Cargo.toml"
+            if cargo.exists():
+                return tomllib.loads(cargo.read_text(encoding="utf-8")).get("package", {}).get("name", "")
+            return ""
+
+        records = []
+        failures = []
+        for root in roots():
+            issues: list[str] = []
+            readme = first_existing(root, ("README.md", "README.rst", "README.txt", "README"))
+            license_file = first_existing(root, ("LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING", "COPYING.md", "COPYING.txt"))
+            notice = first_existing(root, ("NOTICE", "NOTICE.md", "NOTICE.txt"))
+            name = package_name(root)
+            if truth("REQUIRE_README") and not readme:
+                issues.append("missing README")
+            if truth("REQUIRE_LICENSE") and not license_file:
+                issues.append("missing LICENSE")
+            if truth("REQUIRE_NOTICE") and not notice:
+                issues.append("missing NOTICE")
+            if truth("PACKAGE_NAME_REQUIRED_IN_README") and name and readme:
+                text = readme.read_text(encoding="utf-8", errors="replace").lower()
+                if name.lower() not in text:
+                    issues.append("package name missing from README")
+            record = {
+                "root": root.as_posix(),
+                "package_name": name,
+                "readme": readme.as_posix() if readme else "",
+                "license": license_file.as_posix() if license_file else "",
+                "notice": notice.as_posix() if notice else "",
+                "issues": issues,
+            }
+            records.append(record)
+            if issues:
+                failures.append(record)
+
+        report = {"records": records, "failures": failures}
+        json_path = Path(os.environ["REPORT_JSON"])
+        md_path = Path(os.environ["REPORT_MD"])
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        md_path.parent.mkdir(parents=True, exist_ok=True)
+        json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        lines = ["# Notice README Check", "", f"- Roots: {len(records)}", f"- Failures: {len(failures)}", "", "| Root | Package | Issues |", "| --- | --- | --- |"]
+        for record in records:
+            lines.append(f"| `{record['root']}` | `{record['package_name']}` | {', '.join(record['issues']) or 'none'} |")
+        md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        if failures:
+            raise SystemExit(f"Notice/README check failed with {len(failures)} failure(s). See {json_path}.")
+        PY

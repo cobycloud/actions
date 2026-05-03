@@ -1,0 +1,39 @@
+name: Reusable Monorepo Artifact Join
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      artifact-pattern:
+        type: string
+        required: false
+        default: ""
+      output-directory:
+        type: string
+        required: false
+        default: collected-artifacts
+      expected-count:
+        type: string
+        required: false
+        default: "0"
+      merged-artifact-name:
+        type: string
+        required: false
+        default: monorepo-artifacts
+
+permissions:
+  contents: read
+
+jobs:
+  artifact-join:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: cobycloud/actions/actions/monorepo-artifact-join@main
+        with:
+          artifact-pattern: ${{ inputs.artifact-pattern }}
+          output-directory: ${{ inputs.output-directory }}
+          expected-count: ${{ inputs.expected-count }}
+          merged-artifact-name: ${{ inputs.merged-artifact-name }}

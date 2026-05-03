@@ -1,0 +1,104 @@
+name: Reusable Linux Package Publish
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      package-manager:
+        type: string
+        required: true
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      setup-command:
+        type: string
+        required: false
+        default: ""
+      publish-command:
+        type: string
+        required: false
+        default: ""
+      package-path:
+        type: string
+        required: false
+        default: ""
+      snap-file:
+        type: string
+        required: false
+        default: ""
+      snap-release:
+        type: string
+        required: false
+        default: stable
+      tap-repository:
+        type: string
+        required: false
+        default: ""
+      tap-directory:
+        type: string
+        required: false
+        default: homebrew-tap
+      tap-update-command:
+        type: string
+        required: false
+        default: ""
+    secrets:
+      SNAPCRAFT_STORE_CREDENTIALS:
+        required: false
+      TAP_GITHUB_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  linux-package-publish:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish APT package
+        if: ${{ inputs.package-manager == 'apt' }}
+        uses: cobycloud/actions/actions/apt-publish@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          setup-command: ${{ inputs.setup-command }}
+          publish-command: ${{ inputs.publish-command }}
+          package-path: ${{ inputs.package-path || '*.deb' }}
+
+      - name: Publish RPM package
+        if: ${{ inputs.package-manager == 'rpm' }}
+        uses: cobycloud/actions/actions/rpm-publish@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          setup-command: ${{ inputs.setup-command }}
+          publish-command: ${{ inputs.publish-command }}
+          package-path: ${{ inputs.package-path || '*.rpm' }}
+
+      - name: Publish Snap package
+        if: ${{ inputs.package-manager == 'snap' }}
+        uses: cobycloud/actions/actions/snap-publish@main
+        with:
+          snap-file: ${{ inputs.snap-file }}
+          release: ${{ inputs.snap-release }}
+          store-login: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+
+      - name: Publish Homebrew tap
+        if: ${{ inputs.package-manager == 'brew' }}
+        uses: cobycloud/actions/actions/brew-publish@main
+        with:
+          tap-repository: ${{ inputs.tap-repository }}
+          tap-directory: ${{ inputs.tap-directory }}
+          update-command: ${{ inputs.tap-update-command }}
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}
+
+      - name: Validate package manager
+        if: ${{ inputs.package-manager != 'apt' && inputs.package-manager != 'rpm' && inputs.package-manager != 'snap' && inputs.package-manager != 'brew' }}
+        shell: bash
+        run: |
+          echo "Unsupported package-manager: ${{ inputs.package-manager }}" >&2
+          exit 1

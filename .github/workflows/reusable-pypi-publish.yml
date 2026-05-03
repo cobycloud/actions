@@ -1,0 +1,63 @@
+name: Reusable PyPI Publish
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      packages-dir:
+        type: string
+        required: false
+        default: dist
+      artifact-name:
+        type: string
+        required: false
+        default: ""
+      repository-url:
+        type: string
+        required: false
+        default: ""
+      skip-existing:
+        type: boolean
+        required: false
+        default: false
+      verbose:
+        type: boolean
+        required: false
+        default: false
+      print-hash:
+        type: boolean
+        required: false
+        default: true
+    secrets:
+      PYPI_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download distribution artifact
+        if: ${{ inputs.artifact-name != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.packages-dir }}
+
+      - uses: cobycloud/actions/actions/pypi-publish@main
+        with:
+          packages-dir: ${{ inputs.packages-dir }}
+          repository-url: ${{ inputs.repository-url }}
+          password: ${{ secrets.PYPI_TOKEN }}
+          skip-existing: ${{ inputs.skip-existing }}
+          verbose: ${{ inputs.verbose }}
+          print-hash: ${{ inputs.print-hash }}

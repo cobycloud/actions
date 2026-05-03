@@ -1,0 +1,51 @@
+name: Terraform Apply
+description: Set up Terraform and apply a plan or caller-provided apply command.
+inputs:
+  working-directory:
+    description: Directory containing Terraform configuration.
+    required: false
+    default: "."
+  terraform-version:
+    description: Terraform version passed to setup-terraform.
+    required: false
+    default: latest
+  init-command:
+    description: Terraform init command.
+    required: false
+    default: terraform init
+  apply-command:
+    description: Terraform apply command.
+    required: false
+    default: terraform apply -auto-approve
+  plan-artifact-name:
+    description: Optional plan artifact name to download before apply.
+    required: false
+    default: ""
+  plan-path:
+    description: Optional downloaded plan path.
+    required: false
+    default: tfplan
+runs:
+  using: composite
+  steps:
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform-version }}
+
+    - name: Download Terraform plan
+      if: ${{ inputs.plan-artifact-name != '' }}
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.plan-artifact-name }}
+        path: ${{ inputs.working-directory }}
+
+    - name: Terraform init
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.init-command }}
+
+    - name: Terraform apply
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.apply-command }}

@@ -53,6 +53,10 @@ steps:
 - Bash shell
 - A checked-out repository
 
-## Related Reusable Workflow
+## Related Reusable Workflows
 
-Use `.github/workflows/reusable-python-uv-ci.yml` when the caller wants the full job wrapper with checkout and optional artifact upload.
+- `.github/workflows/reusable-python-uv-ci.yml`: one Python/uv CI job.
+- `.github/workflows/reusable-python-version-matrix.yml`: Python 3.10 through 3.13 fan-out by default.
+- `.github/workflows/reusable-cross-platform-python.yml`: Python version fan-out across Ubuntu, Windows, and macOS.
+- `.github/workflows/reusable-python-package-matrix-ci.yml`: package-cell fan-out across Python versions.
+- `.github/workflows/reusable-os-matrix.yml`: generic Node, Python, or Rust OS fan-out.

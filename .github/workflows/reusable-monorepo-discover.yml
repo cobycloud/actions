@@ -1,0 +1,62 @@
+name: Reusable Monorepo Discover
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      package-globs:
+        type: string
+        required: false
+        default: |
+          packages/*
+          apps/*
+          pkgs/*/*
+      ecosystem:
+        type: string
+        required: false
+        default: generic
+      changed-only:
+        type: boolean
+        required: false
+        default: false
+      base-ref:
+        type: string
+        required: false
+        default: origin/main
+      head-ref:
+        type: string
+        required: false
+        default: HEAD
+    outputs:
+      matrix-json:
+        description: JSON array of package cells.
+        value: ${{ jobs.discover.outputs.matrix-json }}
+      package-count:
+        description: Number of discovered packages.
+        value: ${{ jobs.discover.outputs.package-count }}
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ${{ inputs.runner }}
+    outputs:
+      matrix-json: ${{ steps.discover.outputs.matrix-json }}
+      package-count: ${{ steps.discover.outputs.package-count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: discover
+        uses: cobycloud/actions/actions/monorepo-discover@main
+        with:
+          package-globs: ${{ inputs.package-globs }}
+          ecosystem: ${{ inputs.ecosystem }}
+          changed-only: ${{ inputs.changed-only }}
+          base-ref: ${{ inputs.base-ref }}
+          head-ref: ${{ inputs.head-ref }}

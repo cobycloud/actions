@@ -1,0 +1,77 @@
+name: pnpm Monorepo CI
+description: Set up pnpm and run lint, typecheck, test, and build commands for one package cell.
+inputs:
+  node-version:
+    description: Node.js version to install.
+    required: false
+    default: "20"
+  pnpm-version:
+    description: pnpm version to install.
+    required: false
+    default: "9"
+  package-path:
+    description: Package directory.
+    required: false
+    default: "."
+  install-command:
+    description: pnpm install command.
+    required: false
+    default: pnpm install --frozen-lockfile
+  lint-command:
+    description: Lint command. Leave empty to skip.
+    required: false
+    default: pnpm run lint --if-present
+  typecheck-command:
+    description: Typecheck command. Leave empty to skip.
+    required: false
+    default: pnpm run typecheck --if-present
+  test-command:
+    description: Test command. Leave empty to skip.
+    required: false
+    default: pnpm test --if-present
+  build-command:
+    description: Build command. Leave empty to skip.
+    required: false
+    default: pnpm run build --if-present
+runs:
+  using: composite
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: ${{ inputs.pnpm-version }}
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: ${{ inputs.install-command }}
+
+    - name: Lint
+      if: ${{ inputs.lint-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: ${{ inputs.lint-command }}
+
+    - name: Typecheck
+      if: ${{ inputs.typecheck-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: ${{ inputs.typecheck-command }}
+
+    - name: Test
+      if: ${{ inputs.test-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: ${{ inputs.test-command }}
+
+    - name: Build
+      if: ${{ inputs.build-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: ${{ inputs.build-command }}

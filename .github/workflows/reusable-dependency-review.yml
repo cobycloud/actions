@@ -1,0 +1,72 @@
+name: Reusable Dependency Review
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      fail-on-severity:
+        type: string
+        required: false
+        default: high
+      allow-licenses:
+        type: string
+        required: false
+        default: ""
+      deny-licenses:
+        type: string
+        required: false
+        default: ""
+      deny-packages:
+        type: string
+        required: false
+        default: ""
+      allow-dependencies-licenses:
+        type: string
+        required: false
+        default: ""
+      vulnerability-check:
+        type: boolean
+        required: false
+        default: true
+      license-check:
+        type: boolean
+        required: false
+        default: true
+      comment-summary-in-pr:
+        type: string
+        required: false
+        default: never
+      retry-on-snapshot-warnings:
+        type: boolean
+        required: false
+        default: true
+      config-file:
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  dependency-review:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/dependency-review@main
+        with:
+          fail-on-severity: ${{ inputs.fail-on-severity }}
+          allow-licenses: ${{ inputs.allow-licenses }}
+          deny-licenses: ${{ inputs.deny-licenses }}
+          deny-packages: ${{ inputs.deny-packages }}
+          allow-dependencies-licenses: ${{ inputs.allow-dependencies-licenses }}
+          vulnerability-check: ${{ inputs.vulnerability-check }}
+          license-check: ${{ inputs.license-check }}
+          comment-summary-in-pr: ${{ inputs.comment-summary-in-pr }}
+          retry-on-snapshot-warnings: ${{ inputs.retry-on-snapshot-warnings }}
+          config-file: ${{ inputs.config-file }}

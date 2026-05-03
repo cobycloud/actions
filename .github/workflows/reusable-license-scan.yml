@@ -1,0 +1,52 @@
+name: Reusable License Scan
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      manifest-globs:
+        type: string
+        required: false
+        default: |
+          package.json
+          **/package.json
+          pyproject.toml
+          **/pyproject.toml
+          Cargo.toml
+          **/Cargo.toml
+      allowed-licenses:
+        type: string
+        required: false
+        default: ""
+      fail-on-missing:
+        type: boolean
+        required: false
+        default: true
+      fail-on-disallowed:
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  license-scan:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/license-scan@main
+        with:
+          manifest-globs: ${{ inputs.manifest-globs }}
+          allowed-licenses: ${{ inputs.allowed-licenses }}
+          fail-on-missing: ${{ inputs.fail-on-missing }}
+          fail-on-disallowed: ${{ inputs.fail-on-disallowed }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: license-scan
+          path: reports/license-scan.*

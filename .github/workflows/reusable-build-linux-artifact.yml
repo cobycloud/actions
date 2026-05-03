@@ -1,0 +1,49 @@
+name: Reusable Build Linux Artifact
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      setup-command:
+        type: string
+        required: false
+        default: ""
+      build-command:
+        type: string
+        required: true
+      linux-build-command:
+        type: string
+        required: false
+        default: ""
+      artifact-path:
+        type: string
+        required: true
+      artifact-name:
+        type: string
+        required: false
+        default: linux-artifact
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux-artifact:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/platform-artifact-build@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          setup-command: ${{ inputs.setup-command }}
+          build-command: ${{ inputs.build-command }}
+          linux-build-command: ${{ inputs.linux-build-command }}
+          artifact-path: ${{ inputs.artifact-path }}
+          artifact-name: ${{ inputs.artifact-name }}

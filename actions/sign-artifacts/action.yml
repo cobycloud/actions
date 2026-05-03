@@ -1,0 +1,64 @@
+name: Sign Artifacts
+description: Sign files with cosign keyless signing or a provided private key.
+inputs:
+  artifact-path:
+    description: Path or glob of files to sign.
+    required: true
+  cosign-version:
+    description: Cosign version to install.
+    required: false
+    default: latest
+  key:
+    description: Optional cosign private key. Empty uses keyless signing.
+    required: false
+    default: ""
+  password:
+    description: Optional cosign private key password.
+    required: false
+    default: ""
+  recursive:
+    description: Expand files recursively when artifact-path is a directory.
+    required: false
+    default: "true"
+  output-signatures:
+    description: Upload generated .sig/.crt files as artifacts in caller workflow if desired.
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Install cosign
+      uses: sigstore/cosign-installer@v3
+      with:
+        cosign-release: ${{ inputs.cosign-version }}
+
+    - name: Sign artifacts
+      shell: bash
+      env:
+        COSIGN_PRIVATE_KEY: ${{ inputs.key }}
+        COSIGN_PASSWORD: ${{ inputs.password }}
+      run: |
+        set -euo pipefail
+        shopt -s nullglob globstar
+        target='${{ inputs.artifact-path }}'
+        files=()
+        if [[ -d "$target" && "${{ inputs.recursive }}" == "true" ]]; then
+          while IFS= read -r -d '' file; do
+            files+=("$file")
+          done < <(find "$target" -type f ! -name '*.sig' ! -name '*.crt' -print0)
+        else
+          for file in $target; do
+            [[ -f "$file" ]] && files+=("$file")
+          done
+        fi
+        if [[ ${#files[@]} -eq 0 ]]; then
+          echo "No files matched artifact-path: $target" >&2
+          exit 1
+        fi
+        for file in "${files[@]}"; do
+          if [[ -n "$COSIGN_PRIVATE_KEY" ]]; then
+            cosign sign-blob --yes --key env://COSIGN_PRIVATE_KEY --output-signature "$file.sig" "$file"
+          else
+            cosign sign-blob --yes --output-signature "$file.sig" --output-certificate "$file.crt" "$file"
+          fi
+        done

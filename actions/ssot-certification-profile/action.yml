@@ -1,0 +1,61 @@
+name: SSOT Certification Profile
+description: Run one SSOT certification profile and upload profile evidence.
+inputs:
+  working-directory:
+    description: Repository directory where SSOT commands execute.
+    required: false
+    default: "."
+  registry-path:
+    description: SSOT registry path.
+    required: false
+    default: .ssot/registry.json
+  profile-id:
+    description: Certification profile ID.
+    required: true
+  boundary-id:
+    description: Optional boundary ID.
+    required: false
+    default: ""
+  ssot-command:
+    description: SSOT executable command prefix.
+    required: false
+    default: uv run ssot
+  certification-command:
+    description: Full certification command override.
+    required: false
+    default: ""
+  evidence-path:
+    description: Certification evidence path to upload.
+    required: false
+    default: certification-evidence
+  fail-closed:
+    description: Fail when certification cannot prove readiness.
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Run SSOT certification profile
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        if [[ -n "${{ inputs.certification-command }}" ]]; then
+          ${{ inputs.certification-command }}
+        else
+          args=(profile verify "${{ inputs.profile-id }}" --registry "${{ inputs.registry-path }}" --evidence-output "${{ inputs.evidence-path }}")
+          if [[ -n "${{ inputs.boundary-id }}" ]]; then
+            args+=(--boundary "${{ inputs.boundary-id }}")
+          fi
+          if [[ "${{ inputs.fail-closed }}" == "true" ]]; then
+            args+=(--fail-closed)
+          fi
+          ${{ inputs.ssot-command }} "${args[@]}"
+        fi
+
+    - name: Upload SSOT certification evidence
+      uses: actions/upload-artifact@v4
+      with:
+        name: ssot-certification-${{ inputs.profile-id }}
+        path: ${{ inputs.working-directory }}/${{ inputs.evidence-path }}
+        if-no-files-found: warn

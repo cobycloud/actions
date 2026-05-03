@@ -1,0 +1,61 @@
+name: Reusable Node CI
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      node-version:
+        type: string
+        required: false
+        default: "20"
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      install-command:
+        type: string
+        required: false
+        default: npm ci
+      build-command:
+        type: string
+        required: false
+        default: ""
+      test-command:
+        type: string
+        required: false
+        default: npm test
+      artifact-path:
+        type: string
+        required: false
+        default: ""
+      artifact-name:
+        type: string
+        required: false
+        default: node-artifact
+
+permissions:
+  contents: read
+
+jobs:
+  node-ci:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/setup-node-project@main
+        with:
+          node-version: ${{ inputs.node-version }}
+          working-directory: ${{ inputs.working-directory }}
+          install-command: ${{ inputs.install-command }}
+          build-command: ${{ inputs.build-command }}
+          test-command: ${{ inputs.test-command }}
+
+      - name: Upload artifact
+        if: ${{ inputs.artifact-path != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.artifact-path }}

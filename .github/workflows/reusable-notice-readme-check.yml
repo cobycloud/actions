@@ -1,0 +1,51 @@
+name: Reusable Notice README Check
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      package-roots:
+        type: string
+        required: false
+        default: "."
+      require-notice:
+        type: boolean
+        required: false
+        default: false
+      require-license:
+        type: boolean
+        required: false
+        default: true
+      require-readme:
+        type: boolean
+        required: false
+        default: true
+      package-name-required-in-readme:
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  notice-readme-check:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/notice-readme-check@main
+        with:
+          package-roots: ${{ inputs.package-roots }}
+          require-notice: ${{ inputs.require-notice }}
+          require-license: ${{ inputs.require-license }}
+          require-readme: ${{ inputs.require-readme }}
+          package-name-required-in-readme: ${{ inputs.package-name-required-in-readme }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notice-readme-check
+          path: reports/notice-readme-check.*

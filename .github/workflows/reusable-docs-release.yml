@@ -1,0 +1,91 @@
+name: Reusable Docs Release
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      setup-command:
+        type: string
+        required: false
+        default: ""
+      build-command:
+        type: string
+        required: true
+      output-path:
+        type: string
+        required: false
+        default: site
+      deploy-pages:
+        type: boolean
+        required: false
+        default: true
+      upload-release-asset:
+        type: boolean
+        required: false
+        default: false
+      tag-name:
+        type: string
+        required: false
+        default: ""
+      release-asset-name:
+        type: string
+        required: false
+        default: docs-site
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  docs-release:
+    runs-on: ${{ inputs.runner }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/docs-build@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          setup-command: ${{ inputs.setup-command }}
+          build-command: ${{ inputs.build-command }}
+          output-path: ${{ inputs.output-path }}
+          artifact-name: docs-site
+
+      - name: Configure Pages
+        if: ${{ inputs.deploy-pages == true }}
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: ${{ inputs.deploy-pages == true }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ inputs.working-directory }}/${{ inputs.output-path }}
+
+      - name: Deploy Pages
+        if: ${{ inputs.deploy-pages == true }}
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Archive docs
+        if: ${{ inputs.upload-release-asset == true }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf "${{ inputs.release-asset-name }}.tar.gz" -C "${{ inputs.working-directory }}/${{ inputs.output-path }}" .
+
+      - name: Upload docs release asset
+        if: ${{ inputs.upload-release-asset == true && inputs.tag-name != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag-name }}
+          files: ${{ inputs.release-asset-name }}.tar.gz

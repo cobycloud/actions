@@ -1,0 +1,65 @@
+name: SSOT Sync Statuses
+description: Synchronize SSOT implementation statuses from evidence or target repo truth.
+inputs:
+  working-directory:
+    description: Repository directory where SSOT commands execute.
+    required: false
+    default: "."
+  registry-path:
+    description: SSOT registry path.
+    required: false
+    default: .ssot/registry.json
+  ssot-command:
+    description: SSOT executable command prefix.
+    required: false
+    default: uv run ssot
+  sync-command:
+    description: Full status sync command override.
+    required: false
+    default: ""
+  evidence-path:
+    description: Optional evidence input path.
+    required: false
+    default: ""
+  report-path:
+    description: Optional sync report path to upload.
+    required: false
+    default: ""
+  fail-on-changes:
+    description: Fail when sync changes tracked files.
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Sync SSOT statuses
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        if [[ -n "${{ inputs.sync-command }}" ]]; then
+          ${{ inputs.sync-command }}
+        elif [[ -n "${{ inputs.evidence-path }}" ]]; then
+          ${{ inputs.ssot-command }} sync-statuses --registry "${{ inputs.registry-path }}" --evidence "${{ inputs.evidence-path }}"
+        else
+          ${{ inputs.ssot-command }} sync-statuses --registry "${{ inputs.registry-path }}"
+        fi
+
+    - name: Check synced changes
+      if: ${{ inputs.fail-on-changes == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        if ! git diff --quiet; then
+          git diff --stat
+          exit 1
+        fi
+
+    - name: Upload SSOT sync report
+      if: ${{ inputs.report-path != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ssot-sync-statuses-report
+        path: ${{ inputs.working-directory }}/${{ inputs.report-path }}
+        if-no-files-found: warn

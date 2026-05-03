@@ -1,0 +1,66 @@
+name: SSOT Release Certify
+description: Certify, promote, or publish an SSOT release entity.
+inputs:
+  working-directory:
+    description: Repository directory where SSOT commands execute.
+    required: false
+    default: "."
+  registry-path:
+    description: SSOT registry path.
+    required: false
+    default: .ssot/registry.json
+  release-id:
+    description: SSOT release ID.
+    required: true
+  ssot-command:
+    description: SSOT executable command prefix.
+    required: false
+    default: uv run ssot
+  operation:
+    description: Release operation. Supported values are certify, promote, publish.
+    required: false
+    default: certify
+  release-command:
+    description: Full release command override.
+    required: false
+    default: ""
+  evidence-path:
+    description: Optional release evidence path to upload.
+    required: false
+    default: ""
+  fail-closed:
+    description: Fail when release operation cannot prove readiness.
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Run SSOT release operation
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        if [[ -n "${{ inputs.release-command }}" ]]; then
+          ${{ inputs.release-command }}
+        else
+          case "${{ inputs.operation }}" in
+            certify|promote|publish) ;;
+            *) echo "Unsupported SSOT release operation: ${{ inputs.operation }}" >&2; exit 1 ;;
+          esac
+          args=(release "${{ inputs.operation }}" "${{ inputs.release-id }}" --registry "${{ inputs.registry-path }}")
+          if [[ -n "${{ inputs.evidence-path }}" ]]; then
+            args+=(--evidence "${{ inputs.evidence-path }}")
+          fi
+          if [[ "${{ inputs.fail-closed }}" == "true" ]]; then
+            args+=(--fail-closed)
+          fi
+          ${{ inputs.ssot-command }} "${args[@]}"
+        fi
+
+    - name: Upload SSOT release evidence
+      if: ${{ inputs.evidence-path != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ssot-release-${{ inputs.release-id }}-${{ inputs.operation }}
+        path: ${{ inputs.working-directory }}/${{ inputs.evidence-path }}
+        if-no-files-found: warn

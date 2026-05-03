@@ -1,0 +1,52 @@
+name: Reusable Version Bump
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      version:
+        type: string
+        required: true
+      package-json-files:
+        type: string
+        required: false
+        default: package.json
+      pyproject-files:
+        type: string
+        required: false
+        default: pyproject.toml
+      cargo-files:
+        type: string
+        required: false
+        default: Cargo.toml
+      extra-version-files:
+        type: string
+        required: false
+        default: ""
+      update-lockfiles:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  version-bump:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: cobycloud/actions/actions/version-bump@main
+        with:
+          version: ${{ inputs.version }}
+          package-json-files: ${{ inputs.package-json-files }}
+          pyproject-files: ${{ inputs.pyproject-files }}
+          cargo-files: ${{ inputs.cargo-files }}
+          extra-version-files: ${{ inputs.extra-version-files }}
+          update-lockfiles: ${{ inputs.update-lockfiles }}

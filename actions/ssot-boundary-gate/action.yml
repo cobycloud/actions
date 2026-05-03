@@ -1,0 +1,62 @@
+name: SSOT Boundary Gate
+description: Validate SSOT boundary scope, freeze state, and optional release readiness.
+inputs:
+  working-directory:
+    description: Repository directory where SSOT commands execute.
+    required: false
+    default: "."
+  registry-path:
+    description: SSOT registry path.
+    required: false
+    default: .ssot/registry.json
+  boundary-id:
+    description: Boundary ID to validate.
+    required: true
+  ssot-command:
+    description: SSOT executable command prefix.
+    required: false
+    default: uv run ssot
+  gate-command:
+    description: Full boundary gate command override.
+    required: false
+    default: ""
+  require-frozen:
+    description: Require the boundary to be frozen.
+    required: false
+    default: "true"
+  fail-closed:
+    description: Fail when boundary gate cannot prove readiness.
+    required: false
+    default: "true"
+  report-path:
+    description: Optional boundary gate report path to upload.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Run SSOT boundary gate
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        if [[ -n "${{ inputs.gate-command }}" ]]; then
+          ${{ inputs.gate-command }}
+        else
+          args=(boundary gate "${{ inputs.boundary-id }}" --registry "${{ inputs.registry-path }}")
+          if [[ "${{ inputs.require-frozen }}" == "true" ]]; then
+            args+=(--require-frozen)
+          fi
+          if [[ "${{ inputs.fail-closed }}" == "true" ]]; then
+            args+=(--fail-closed)
+          fi
+          ${{ inputs.ssot-command }} "${args[@]}"
+        fi
+
+    - name: Upload SSOT boundary report
+      if: ${{ inputs.report-path != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ssot-boundary-gate-report
+        path: ${{ inputs.working-directory }}/${{ inputs.report-path }}
+        if-no-files-found: warn

@@ -1,0 +1,56 @@
+name: Homebrew Publish
+description: Update a Homebrew tap using a caller-provided command and optional pull request.
+inputs:
+  tap-repository:
+    description: Homebrew tap repository in owner/name form.
+    required: true
+  tap-directory:
+    description: Directory where the tap repository is checked out.
+    required: false
+    default: homebrew-tap
+  ref:
+    description: Tap ref to check out.
+    required: false
+    default: main
+  update-command:
+    description: Command that updates formulae or casks.
+    required: true
+  commit-message:
+    description: Commit message for tap update.
+    required: false
+    default: Update Homebrew formulae
+  branch:
+    description: Pull request branch.
+    required: false
+    default: update-homebrew-formulae
+  title:
+    description: Pull request title.
+    required: false
+    default: Update Homebrew formulae
+  token:
+    description: GitHub token with access to the tap repository.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Checkout tap
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.tap-repository }}
+        ref: ${{ inputs.ref }}
+        path: ${{ inputs.tap-directory }}
+        token: ${{ inputs.token }}
+
+    - name: Update formulae
+      shell: bash
+      working-directory: ${{ inputs.tap-directory }}
+      run: ${{ inputs.update-command }}
+
+    - name: Create tap pull request
+      uses: peter-evans/create-pull-request@v6
+      with:
+        path: ${{ inputs.tap-directory }}
+        token: ${{ inputs.token }}
+        commit-message: ${{ inputs.commit-message }}
+        branch: ${{ inputs.branch }}
+        title: ${{ inputs.title }}

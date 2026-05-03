@@ -1,0 +1,98 @@
+name: npm Publish
+description: Publish a Node package to npmjs or another npm-compatible registry.
+inputs:
+  node-version:
+    description: Node.js version to install.
+    required: false
+    default: "20"
+  package-directory:
+    description: Directory containing package.json.
+    required: false
+    default: "."
+  registry-url:
+    description: npm registry URL.
+    required: false
+    default: https://registry.npmjs.org
+  scope:
+    description: Optional package scope for actions/setup-node registry configuration.
+    required: false
+    default: ""
+  npm-token:
+    description: npm automation token.
+    required: true
+  install-command:
+    description: Optional install command. Leave empty to skip install.
+    required: false
+    default: npm ci
+  build-command:
+    description: Optional build command. Leave empty to skip build.
+    required: false
+    default: ""
+  test-command:
+    description: Optional test command. Leave empty to skip tests.
+    required: false
+    default: ""
+  tag:
+    description: npm dist-tag.
+    required: false
+    default: latest
+  access:
+    description: npm access level, such as public or restricted. Leave empty to omit.
+    required: false
+    default: public
+  provenance:
+    description: Publish with npm provenance.
+    required: false
+    default: "true"
+  dry-run:
+    description: Run npm publish with --dry-run.
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: ${{ inputs.registry-url }}
+        scope: ${{ inputs.scope }}
+        cache: npm
+        cache-dependency-path: ${{ inputs.package-directory }}/package-lock.json
+
+    - name: Install dependencies
+      if: ${{ inputs.install-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.package-directory }}
+      run: ${{ inputs.install-command }}
+
+    - name: Build
+      if: ${{ inputs.build-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.package-directory }}
+      run: ${{ inputs.build-command }}
+
+    - name: Test
+      if: ${{ inputs.test-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.package-directory }}
+      run: ${{ inputs.test-command }}
+
+    - name: Publish package
+      shell: bash
+      working-directory: ${{ inputs.package-directory }}
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.npm-token }}
+      run: |
+        set -euo pipefail
+        args=(--tag "${{ inputs.tag }}")
+        if [[ -n "${{ inputs.access }}" ]]; then
+          args+=(--access "${{ inputs.access }}")
+        fi
+        if [[ "${{ inputs.provenance }}" == "true" ]]; then
+          args+=(--provenance)
+        fi
+        if [[ "${{ inputs.dry-run }}" == "true" ]]; then
+          args+=(--dry-run)
+        fi
+        npm publish "${args[@]}"

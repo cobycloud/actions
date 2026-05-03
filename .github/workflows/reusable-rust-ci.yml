@@ -1,0 +1,71 @@
+name: Reusable Rust Cargo CI
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      rust-toolchain:
+        type: string
+        required: false
+        default: stable
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      components:
+        type: string
+        required: false
+        default: rustfmt,clippy
+      targets:
+        type: string
+        required: false
+        default: ""
+      cache:
+        type: boolean
+        required: false
+        default: true
+      fmt-command:
+        type: string
+        required: false
+        default: cargo fmt --all -- --check
+      clippy-command:
+        type: string
+        required: false
+        default: cargo clippy --all-targets --all-features -- -D warnings
+      test-command:
+        type: string
+        required: false
+        default: cargo test --all-features
+      build-command:
+        type: string
+        required: false
+        default: cargo build --all-features
+      doc-command:
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  rust-ci:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/rust-cargo-ci@main
+        with:
+          rust-toolchain: ${{ inputs.rust-toolchain }}
+          working-directory: ${{ inputs.working-directory }}
+          components: ${{ inputs.components }}
+          targets: ${{ inputs.targets }}
+          cache: ${{ inputs.cache }}
+          fmt-command: ${{ inputs.fmt-command }}
+          clippy-command: ${{ inputs.clippy-command }}
+          test-command: ${{ inputs.test-command }}
+          build-command: ${{ inputs.build-command }}
+          doc-command: ${{ inputs.doc-command }}

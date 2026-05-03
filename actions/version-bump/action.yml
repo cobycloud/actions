@@ -1,0 +1,142 @@
+name: Version Bump
+description: Bump versions in package manifests, TOML files, lockfiles, and release metadata files.
+inputs:
+  version:
+    description: Version to write, without a tag prefix.
+    required: true
+  package-json-files:
+    description: Newline-delimited package.json glob patterns.
+    required: false
+    default: package.json
+  pyproject-files:
+    description: Newline-delimited pyproject.toml glob patterns.
+    required: false
+    default: pyproject.toml
+  cargo-files:
+    description: Newline-delimited Cargo.toml glob patterns.
+    required: false
+    default: Cargo.toml
+  extra-version-files:
+    description: Newline-delimited extra files where simple version assignments should be updated.
+    required: false
+    default: ""
+  extra-version-pattern:
+    description: Regex with two capture groups around the version text for extra files.
+    required: false
+    default: '(version\s*[:=]\s*["'']).*?(["''])'
+  update-lockfiles:
+    description: Run package-manager lockfile refresh commands when matching manifests exist.
+    required: false
+    default: "false"
+  npm-lock-command:
+    description: Command used to refresh npm lockfiles.
+    required: false
+    default: npm install --package-lock-only --ignore-scripts
+  cargo-lock-command:
+    description: Command used to refresh Cargo.lock.
+    required: false
+    default: cargo generate-lockfile
+outputs:
+  changed:
+    description: Whether any file content changed.
+    value: ${{ steps.bump.outputs.changed }}
+  changed-files:
+    description: Newline-delimited changed file paths.
+    value: ${{ steps.bump.outputs.changed-files }}
+runs:
+  using: composite
+  steps:
+    - name: Bump manifest versions
+      id: bump
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        PACKAGE_JSON_FILES: ${{ inputs.package-json-files }}
+        PYPROJECT_FILES: ${{ inputs.pyproject-files }}
+        CARGO_FILES: ${{ inputs.cargo-files }}
+        EXTRA_VERSION_FILES: ${{ inputs.extra-version-files }}
+        EXTRA_VERSION_PATTERN: ${{ inputs.extra-version-pattern }}
+      run: |
+        set -euo pipefail
+        python - <<'PY'
+        from __future__ import annotations
+
+        import glob
+        import json
+        import os
+        import re
+        from pathlib import Path
+
+        version = os.environ["VERSION"]
+        changed: list[str] = []
+
+        def patterns(name: str) -> list[str]:
+            return [line.strip() for line in os.environ.get(name, "").splitlines() if line.strip()]
+
+        def files_for(name: str) -> list[Path]:
+            seen: set[Path] = set()
+            files: list[Path] = []
+            for pattern in patterns(name):
+                for match in glob.glob(pattern, recursive=True):
+                    path = Path(match)
+                    if path.is_file() and path not in seen:
+                        seen.add(path)
+                        files.append(path)
+            return files
+
+        def write_if_changed(path: Path, text: str) -> None:
+            old = path.read_text(encoding="utf-8")
+            if old != text:
+                path.write_text(text, encoding="utf-8")
+                changed.append(path.as_posix())
+
+        for path in files_for("PACKAGE_JSON_FILES"):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if data.get("version") != version:
+                data["version"] = version
+                write_if_changed(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+
+        toml_sections = {"project", "tool.poetry", "package", "workspace.package"}
+        for env_name in ("PYPROJECT_FILES", "CARGO_FILES"):
+            for path in files_for(env_name):
+                original = path.read_text(encoding="utf-8")
+                section = ""
+                out: list[str] = []
+                replaced = False
+                for line in original.splitlines(keepends=True):
+                    section_match = re.match(r"\s*\[([^\]]+)\]\s*(?:#.*)?$", line)
+                    if section_match:
+                        section = section_match.group(1).strip()
+                    if section in toml_sections and re.match(r"\s*version\s*=", line):
+                        newline = "\n" if line.endswith("\n") else ""
+                        out.append(re.sub(r'(^\s*version\s*=\s*)["\'][^"\']*["\']', rf'\1"{version}"', line.rstrip("\n")) + newline)
+                        replaced = True
+                    else:
+                        out.append(line)
+                if replaced:
+                    write_if_changed(path, "".join(out))
+
+        extra_pattern = re.compile(os.environ["EXTRA_VERSION_PATTERN"])
+        for path in files_for("EXTRA_VERSION_FILES"):
+            original = path.read_text(encoding="utf-8")
+            updated, count = extra_pattern.subn(rf"\g<1>{version}\g<2>", original)
+            if count:
+                write_if_changed(path, updated)
+
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+            fh.write(f"changed={'true' if changed else 'false'}\n")
+            fh.write("changed-files<<EOF\n")
+            for path in changed:
+                fh.write(path + "\n")
+            fh.write("EOF\n")
+        PY
+
+    - name: Refresh npm lockfile
+      if: ${{ inputs.update-lockfiles == 'true' && inputs.package-json-files != '' }}
+      shell: bash
+      run: ${{ inputs.npm-lock-command }}
+
+    - name: Refresh Cargo lockfile
+      if: ${{ inputs.update-lockfiles == 'true' && inputs.cargo-files != '' }}
+      shell: bash
+      run: ${{ inputs.cargo-lock-command }}

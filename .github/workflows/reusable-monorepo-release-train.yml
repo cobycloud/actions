@@ -1,0 +1,40 @@
+name: Reusable Monorepo Release Train
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      package-cells:
+        type: string
+        required: true
+      setup-command:
+        type: string
+        required: false
+        default: ""
+      command:
+        type: string
+        required: true
+      environment:
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release-train:
+    runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/monorepo-release-train@main
+        with:
+          package-cells: ${{ inputs.package-cells }}
+          setup-command: ${{ inputs.setup-command }}
+          command: ${{ inputs.command }}

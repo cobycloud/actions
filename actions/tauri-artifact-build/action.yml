@@ -1,0 +1,76 @@
+name: Tauri Artifact Build
+description: Set up Node and Rust, build Tauri desktop artifacts, and upload bundles.
+inputs:
+  node-version:
+    description: Node.js version.
+    required: false
+    default: "20"
+  rust-toolchain:
+    description: Rust toolchain.
+    required: false
+    default: stable
+  working-directory:
+    description: Tauri project directory.
+    required: false
+    default: "."
+  linux-deps-command:
+    description: Optional Linux dependency installation command.
+    required: false
+    default: ""
+  install-command:
+    description: Frontend dependency install command.
+    required: false
+    default: npm ci
+  build-command:
+    description: Tauri build command.
+    required: false
+    default: npm run tauri build
+  artifact-path:
+    description: Built bundle path or glob.
+    required: false
+    default: src-tauri/target/release/bundle/**
+  artifact-name:
+    description: Uploaded artifact name.
+    required: false
+    default: tauri-artifact
+runs:
+  using: composite
+  steps:
+    - name: Install Linux dependencies
+      if: ${{ runner.os == 'Linux' && inputs.linux-deps-command != '' }}
+      shell: bash
+      run: ${{ inputs.linux-deps-command }}
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ inputs.rust-toolchain }}
+
+    - name: Cache Cargo
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: ${{ inputs.working-directory }}/src-tauri
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.install-command }}
+
+    - name: Build Tauri artifact
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.build-command }}
+
+    - name: Upload Tauri artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.working-directory }}/${{ inputs.artifact-path }}
+        if-no-files-found: error

@@ -1,0 +1,45 @@
+name: Reusable Docs Build
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      setup-command:
+        type: string
+        required: false
+        default: ""
+      build-command:
+        type: string
+        required: true
+      output-path:
+        type: string
+        required: false
+        default: site
+      artifact-name:
+        type: string
+        required: false
+        default: docs-site
+
+permissions:
+  contents: read
+
+jobs:
+  docs-build:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/docs-build@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          setup-command: ${{ inputs.setup-command }}
+          build-command: ${{ inputs.build-command }}
+          output-path: ${{ inputs.output-path }}
+          artifact-name: ${{ inputs.artifact-name }}

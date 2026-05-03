@@ -1,0 +1,61 @@
+name: Netlify Deploy
+description: Deploy a static app directory to Netlify.
+inputs:
+  working-directory:
+    description: Project directory.
+    required: false
+    default: "."
+  setup-command:
+    description: Optional setup command.
+    required: false
+    default: ""
+  build-command:
+    description: Optional build command before deploy.
+    required: false
+    default: ""
+  output-path:
+    description: Static app output path to deploy.
+    required: false
+    default: dist
+  site-id:
+    description: Netlify site ID.
+    required: true
+  auth-token:
+    description: Netlify auth token.
+    required: true
+  production:
+    description: Deploy to production.
+    required: false
+    default: "true"
+  netlify-command:
+    description: Netlify executable command.
+    required: false
+    default: npx netlify
+runs:
+  using: composite
+  steps:
+    - name: Setup Netlify deploy
+      if: ${{ inputs.setup-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.setup-command }}
+
+    - name: Build static app
+      if: ${{ inputs.build-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.build-command }}
+
+    - name: Deploy Netlify site
+      shell: bash
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ inputs.auth-token }}
+        NETLIFY_SITE_ID: ${{ inputs.site-id }}
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        args=(deploy --dir "${{ inputs.output-path }}")
+        if [[ "${{ inputs.production }}" == "true" ]]; then
+          args+=(--prod)
+        fi
+        ${{ inputs.netlify-command }} "${args[@]}"

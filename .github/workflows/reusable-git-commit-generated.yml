@@ -1,0 +1,42 @@
+name: Reusable Git Commit Generated
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      paths:
+        type: string
+        required: true
+      commit-message:
+        type: string
+        required: false
+        default: Update generated outputs
+      push:
+        type: boolean
+        required: false
+        default: false
+    outputs:
+      committed:
+        description: Whether a commit was created.
+        value: ${{ jobs.commit.outputs.committed }}
+
+permissions:
+  contents: write
+
+jobs:
+  commit:
+    runs-on: ${{ inputs.runner }}
+    outputs:
+      committed: ${{ steps.commit.outputs.committed }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: commit
+        uses: cobycloud/actions/actions/git-commit-generated@main
+        with:
+          paths: ${{ inputs.paths }}
+          commit-message: ${{ inputs.commit-message }}
+          push: ${{ inputs.push }}

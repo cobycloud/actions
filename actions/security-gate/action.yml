@@ -1,0 +1,78 @@
+name: Security Gate
+description: Aggregate license, metadata, TOML, dependency review, and optional CodeQL checks.
+inputs:
+  run-license-scan:
+    description: Run license scan.
+    required: false
+    default: "true"
+  run-package-metadata:
+    description: Run package metadata validation.
+    required: false
+    default: "true"
+  run-toml-validate:
+    description: Run TOML validation.
+    required: false
+    default: "true"
+  run-dependency-review:
+    description: Run dependency review. Usually only valid for pull_request events.
+    required: false
+    default: "false"
+  run-codeql:
+    description: Run CodeQL analysis.
+    required: false
+    default: "false"
+  codeql-languages:
+    description: Comma-separated CodeQL languages when run-codeql is true.
+    required: false
+    default: ""
+  codeql-build-mode:
+    description: CodeQL build mode.
+    required: false
+    default: autobuild
+  dependency-fail-on-severity:
+    description: Dependency review fail-on-severity.
+    required: false
+    default: high
+  allowed-licenses:
+    description: Newline-delimited license scan allowlist.
+    required: false
+    default: ""
+  dependency-allow-licenses:
+    description: Comma-separated dependency-review allowed licenses.
+    required: false
+    default: ""
+  dependency-deny-licenses:
+    description: Comma-separated dependency-review denied licenses.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: License scan
+      if: ${{ inputs.run-license-scan == 'true' }}
+      uses: cobycloud/actions/actions/license-scan@main
+      with:
+        allowed-licenses: ${{ inputs.allowed-licenses }}
+
+    - name: Package metadata
+      if: ${{ inputs.run-package-metadata == 'true' }}
+      uses: cobycloud/actions/actions/package-metadata@main
+
+    - name: TOML validate
+      if: ${{ inputs.run-toml-validate == 'true' }}
+      uses: cobycloud/actions/actions/toml-validate@main
+
+    - name: Dependency review
+      if: ${{ inputs.run-dependency-review == 'true' }}
+      uses: cobycloud/actions/actions/dependency-review@main
+      with:
+        fail-on-severity: ${{ inputs.dependency-fail-on-severity }}
+        allow-licenses: ${{ inputs.dependency-allow-licenses }}
+        deny-licenses: ${{ inputs.dependency-deny-licenses }}
+
+    - name: CodeQL
+      if: ${{ inputs.run-codeql == 'true' }}
+      uses: cobycloud/actions/actions/codeql@main
+      with:
+        languages: ${{ inputs.codeql-languages }}
+        build-mode: ${{ inputs.codeql-build-mode }}

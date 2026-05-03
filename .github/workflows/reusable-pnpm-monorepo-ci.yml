@@ -1,0 +1,81 @@
+name: Reusable pnpm Monorepo CI
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      node-versions:
+        type: string
+        required: false
+        default: '["18","20","22"]'
+      package-cells:
+        type: string
+        required: true
+      pnpm-version:
+        type: string
+        required: false
+        default: "9"
+      install-command:
+        type: string
+        required: false
+        default: pnpm install --frozen-lockfile
+      lint-command:
+        type: string
+        required: false
+        default: pnpm run lint --if-present
+      typecheck-command:
+        type: string
+        required: false
+        default: pnpm run typecheck --if-present
+      test-command:
+        type: string
+        required: false
+        default: pnpm test --if-present
+      build-command:
+        type: string
+        required: false
+        default: pnpm run build --if-present
+      artifact-path:
+        type: string
+        required: false
+        default: ""
+      fail-fast:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  pnpm-monorepo-ci:
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        node-version: ${{ fromJSON(inputs.node-versions) }}
+        package_cell: ${{ fromJSON(inputs.package-cells) }}
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/pnpm-monorepo-ci@main
+        with:
+          node-version: ${{ matrix.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          package-path: ${{ matrix.package_cell.path }}
+          install-command: ${{ inputs.install-command }}
+          lint-command: ${{ inputs.lint-command }}
+          typecheck-command: ${{ inputs.typecheck-command }}
+          test-command: ${{ inputs.test-command }}
+          build-command: ${{ inputs.build-command }}
+
+      - name: Upload package artifact
+        if: ${{ inputs.artifact-path != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pnpm-${{ matrix.package_cell.name }}-node-${{ matrix.node-version }}
+          path: ${{ matrix.package_cell.path }}/${{ inputs.artifact-path }}
+          if-no-files-found: warn

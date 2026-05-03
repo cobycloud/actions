@@ -1,0 +1,69 @@
+name: Reusable GitHub Release
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      tag-name:
+        type: string
+        required: true
+      name:
+        type: string
+        required: false
+        default: ""
+      body:
+        type: string
+        required: false
+        default: ""
+      body-path:
+        type: string
+        required: false
+        default: ""
+      files:
+        type: string
+        required: false
+        default: ""
+      draft:
+        type: boolean
+        required: false
+        default: false
+      prerelease:
+        type: boolean
+        required: false
+        default: false
+      make-latest:
+        type: string
+        required: false
+        default: legacy
+      fail-on-unmatched-files:
+        type: boolean
+        required: false
+        default: true
+    secrets:
+      GH_TOKEN:
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/github-release@main
+        with:
+          tag-name: ${{ inputs.tag-name }}
+          name: ${{ inputs.name }}
+          body: ${{ inputs.body }}
+          body-path: ${{ inputs.body-path }}
+          files: ${{ inputs.files }}
+          draft: ${{ inputs.draft }}
+          prerelease: ${{ inputs.prerelease }}
+          make-latest: ${{ inputs.make-latest }}
+          fail-on-unmatched-files: ${{ inputs.fail-on-unmatched-files }}
+          token: ${{ secrets.GH_TOKEN || github.token }}

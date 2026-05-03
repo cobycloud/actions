@@ -1,0 +1,29 @@
+name: Release Attestation
+description: Generate build provenance attestations for release asset files.
+inputs:
+  release-assets-path:
+    description: Path or glob containing release assets.
+    required: false
+    default: release-assets/*
+  subject-name:
+    description: Optional attestation subject name.
+    required: false
+    default: ""
+  push-to-registry:
+    description: Push attestations to registry when supported.
+    required: false
+    default: "false"
+  show-summary:
+    description: Show attestation summary in the GitHub Actions summary.
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Attest release assets
+      uses: actions/attest-build-provenance@v2
+      with:
+        subject-path: ${{ inputs.release-assets-path }}
+        subject-name: ${{ inputs.subject-name }}
+        push-to-registry: ${{ inputs.push-to-registry }}
+        show-summary: ${{ inputs.show-summary }}

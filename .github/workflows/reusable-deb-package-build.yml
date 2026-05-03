@@ -1,0 +1,46 @@
+name: Reusable Debian Package Build
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      setup-command:
+        type: string
+        required: false
+        default: ""
+      build-command:
+        type: string
+        required: false
+        default: dpkg-buildpackage -us -uc -b
+      artifact-path:
+        type: string
+        required: false
+        default: "../*.deb"
+      artifact-name:
+        type: string
+        required: false
+        default: debian-packages
+
+permissions:
+  contents: read
+
+jobs:
+  deb-package-build:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/deb-package-build@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          setup-command: ${{ inputs.setup-command }}
+          build-command: ${{ inputs.build-command }}
+          artifact-path: ${{ inputs.artifact-path }}
+          artifact-name: ${{ inputs.artifact-name }}

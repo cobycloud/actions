@@ -1,0 +1,38 @@
+name: Create Pull Request
+description: Create or update a pull request for generated changes.
+inputs:
+  paths:
+    description: Newline-delimited paths to include in the PR.
+    required: false
+    default: "."
+  commit-message:
+    description: Commit message.
+    required: false
+    default: Update generated outputs
+  branch:
+    description: Pull request branch.
+    required: false
+    default: generated-updates
+  title:
+    description: Pull request title.
+    required: false
+    default: Update generated outputs
+  body:
+    description: Pull request body.
+    required: false
+    default: Automated generated output update.
+  token:
+    description: GitHub token.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Create pull request
+      uses: peter-evans/create-pull-request@v6
+      with:
+        token: ${{ inputs.token }}
+        add-paths: ${{ inputs.paths }}
+        commit-message: ${{ inputs.commit-message }}
+        branch: ${{ inputs.branch }}
+        title: ${{ inputs.title }}
+        body: ${{ inputs.body }}

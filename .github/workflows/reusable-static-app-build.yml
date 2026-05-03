@@ -1,0 +1,45 @@
+name: Reusable Static App Build
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      setup-command:
+        type: string
+        required: false
+        default: ""
+      build-command:
+        type: string
+        required: true
+      output-path:
+        type: string
+        required: false
+        default: dist
+      artifact-name:
+        type: string
+        required: false
+        default: static-app
+
+permissions:
+  contents: read
+
+jobs:
+  static-app-build:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/static-app-build@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          setup-command: ${{ inputs.setup-command }}
+          build-command: ${{ inputs.build-command }}
+          output-path: ${{ inputs.output-path }}
+          artifact-name: ${{ inputs.artifact-name }}

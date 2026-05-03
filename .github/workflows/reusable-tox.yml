@@ -1,0 +1,41 @@
+name: Reusable tox CI
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      python-version:
+        type: string
+        required: false
+        default: "3.12"
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      install-command:
+        type: string
+        required: false
+        default: python -m pip install tox
+      tox-command:
+        type: string
+        required: false
+        default: tox
+
+permissions:
+  contents: read
+
+jobs:
+  tox:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/tox-ci@main
+        with:
+          python-version: ${{ inputs.python-version }}
+          working-directory: ${{ inputs.working-directory }}
+          install-command: ${{ inputs.install-command }}
+          tox-command: ${{ inputs.tox-command }}

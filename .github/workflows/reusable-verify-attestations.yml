@@ -1,0 +1,65 @@
+name: Reusable Verify Attestations
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      subject-path:
+        type: string
+        required: true
+      owner:
+        type: string
+        required: false
+        default: ""
+      repo:
+        type: string
+        required: false
+        default: ""
+      verify-gh-attestations:
+        type: boolean
+        required: false
+        default: true
+      verify-cosign-signatures:
+        type: boolean
+        required: false
+        default: false
+      cosign-version:
+        type: string
+        required: false
+        default: latest
+      certificate-identity:
+        type: string
+        required: false
+        default: ""
+      certificate-oidc-issuer:
+        type: string
+        required: false
+        default: https://token.actions.githubusercontent.com
+    secrets:
+      COSIGN_PUBLIC_KEY:
+        required: false
+
+permissions:
+  contents: read
+  attestations: read
+
+jobs:
+  verify-attestations:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/verify-attestations@main
+        with:
+          subject-path: ${{ inputs.subject-path }}
+          owner: ${{ inputs.owner || github.repository_owner }}
+          repo: ${{ inputs.repo || github.repository }}
+          verify-gh-attestations: ${{ inputs.verify-gh-attestations }}
+          verify-cosign-signatures: ${{ inputs.verify-cosign-signatures }}
+          cosign-version: ${{ inputs.cosign-version }}
+          certificate-identity: ${{ inputs.certificate-identity }}
+          certificate-oidc-issuer: ${{ inputs.certificate-oidc-issuer }}
+          key: ${{ secrets.COSIGN_PUBLIC_KEY }}

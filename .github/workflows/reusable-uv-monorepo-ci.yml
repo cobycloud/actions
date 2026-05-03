@@ -1,0 +1,76 @@
+name: Reusable uv Monorepo CI
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      python-versions:
+        type: string
+        required: false
+        default: '["3.10","3.11","3.12","3.13"]'
+      package-cells:
+        type: string
+        required: true
+      install-command:
+        type: string
+        required: false
+        default: uv sync --all-groups --frozen
+      compile-command:
+        type: string
+        required: false
+        default: uv run python -m compileall .
+      test-command:
+        type: string
+        required: false
+        default: uv run pytest
+      docs-command:
+        type: string
+        required: false
+        default: ""
+      build-command:
+        type: string
+        required: false
+        default: ""
+      artifact-path:
+        type: string
+        required: false
+        default: ""
+      fail-fast:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  uv-monorepo-ci:
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        python-version: ${{ fromJSON(inputs.python-versions) }}
+        package_cell: ${{ fromJSON(inputs.package-cells) }}
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/uv-monorepo-ci@main
+        with:
+          python-version: ${{ matrix.python-version }}
+          package-path: ${{ matrix.package_cell.path }}
+          install-command: ${{ inputs.install-command }}
+          compile-command: ${{ inputs.compile-command }}
+          test-command: ${{ inputs.test-command }}
+          docs-command: ${{ inputs.docs-command }}
+          build-command: ${{ inputs.build-command }}
+
+      - name: Upload package artifact
+        if: ${{ inputs.artifact-path != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: uv-${{ matrix.package_cell.name }}-py-${{ matrix.python-version }}
+          path: ${{ matrix.package_cell.path }}/${{ inputs.artifact-path }}
+          if-no-files-found: warn

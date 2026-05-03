@@ -1,0 +1,46 @@
+name: Reusable Pages Deploy
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      path:
+        type: string
+        required: false
+        default: site
+      artifact-name:
+        type: string
+        required: false
+        default: github-pages
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  pages-deploy:
+    runs-on: ${{ inputs.runner }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ inputs.path }}
+          name: ${{ inputs.artifact-name }}
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: ${{ inputs.artifact-name }}

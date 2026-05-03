@@ -1,0 +1,55 @@
+name: Reusable Static App Deploy
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      environment:
+        type: string
+        required: false
+        default: ""
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      setup-command:
+        type: string
+        required: false
+        default: ""
+      build-command:
+        type: string
+        required: false
+        default: ""
+      deploy-command:
+        type: string
+        required: true
+      artifact-path:
+        type: string
+        required: false
+        default: ""
+      artifact-name:
+        type: string
+        required: false
+        default: static-app-artifact
+
+permissions:
+  contents: read
+
+jobs:
+  static-app-deploy:
+    runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/static-app-deploy@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          setup-command: ${{ inputs.setup-command }}
+          build-command: ${{ inputs.build-command }}
+          deploy-command: ${{ inputs.deploy-command }}
+          artifact-path: ${{ inputs.artifact-path }}
+          artifact-name: ${{ inputs.artifact-name }}

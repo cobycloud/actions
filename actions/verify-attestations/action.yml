@@ -1,0 +1,110 @@
+name: Verify Attestations
+description: Verify GitHub artifact attestations and optional cosign signatures.
+inputs:
+  subject-path:
+    description: Path or glob of artifacts to verify.
+    required: true
+  owner:
+    description: Expected GitHub repository owner for artifact attestations.
+    required: false
+    default: ""
+  repo:
+    description: Expected GitHub repository in owner/name form. Empty uses current repository.
+    required: false
+    default: ""
+  verify-gh-attestations:
+    description: Verify GitHub artifact attestations with gh attestation verify.
+    required: false
+    default: "true"
+  verify-cosign-signatures:
+    description: Verify adjacent cosign .sig files.
+    required: false
+    default: "false"
+  cosign-version:
+    description: Cosign version to install when verifying signatures.
+    required: false
+    default: latest
+  certificate-identity:
+    description: Expected certificate identity for keyless cosign verification.
+    required: false
+    default: ""
+  certificate-oidc-issuer:
+    description: Expected OIDC issuer for keyless cosign verification.
+    required: false
+    default: https://token.actions.githubusercontent.com
+  key:
+    description: Optional public key for key-based cosign verification.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Verify GitHub attestations
+      if: ${{ inputs.verify-gh-attestations == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        shopt -s nullglob globstar
+        owner="${{ inputs.owner }}"
+        repo="${{ inputs.repo }}"
+        if [[ -z "$repo" ]]; then
+          repo="${GITHUB_REPOSITORY:-}"
+        fi
+        if [[ -z "$owner" && -n "$repo" ]]; then
+          owner="${repo%%/*}"
+        fi
+        if [[ -z "$owner" || -z "$repo" ]]; then
+          echo "Unable to determine attestation owner/repo. Provide owner and repo inputs." >&2
+          exit 1
+        fi
+        files=()
+        for file in ${{ inputs.subject-path }}; do
+          [[ -f "$file" ]] && files+=("$file")
+        done
+        if [[ ${#files[@]} -eq 0 ]]; then
+          echo "No files matched subject-path: ${{ inputs.subject-path }}" >&2
+          exit 1
+        fi
+        for file in "${files[@]}"; do
+          gh attestation verify "$file" --owner "$owner" --repo "$repo"
+        done
+
+    - name: Install cosign
+      if: ${{ inputs.verify-cosign-signatures == 'true' }}
+      uses: sigstore/cosign-installer@v3
+      with:
+        cosign-release: ${{ inputs.cosign-version }}
+
+    - name: Verify cosign signatures
+      if: ${{ inputs.verify-cosign-signatures == 'true' }}
+      shell: bash
+      env:
+        COSIGN_PUBLIC_KEY: ${{ inputs.key }}
+      run: |
+        set -euo pipefail
+        shopt -s nullglob globstar
+        files=()
+        for file in ${{ inputs.subject-path }}; do
+          [[ -f "$file" ]] && files+=("$file")
+        done
+        if [[ ${#files[@]} -eq 0 ]]; then
+          echo "No files matched subject-path: ${{ inputs.subject-path }}" >&2
+          exit 1
+        fi
+        for file in "${files[@]}"; do
+          if [[ ! -f "$file.sig" ]]; then
+            echo "Missing signature for $file" >&2
+            exit 1
+          fi
+          if [[ -n "$COSIGN_PUBLIC_KEY" ]]; then
+            cosign verify-blob --key env://COSIGN_PUBLIC_KEY --signature "$file.sig" "$file"
+          else
+            if [[ -z "${{ inputs.certificate-identity }}" ]]; then
+              echo "certificate-identity is required for keyless cosign verification." >&2
+              exit 1
+            fi
+            cosign verify-blob --certificate "$file.crt" --signature "$file.sig" \
+              --certificate-identity "${{ inputs.certificate-identity }}" \
+              --certificate-oidc-issuer "${{ inputs.certificate-oidc-issuer }}" "$file"
+          fi
+        done

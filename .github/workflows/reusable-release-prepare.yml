@@ -1,0 +1,72 @@
+name: Reusable Release Prepare
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      version:
+        type: string
+        required: true
+      tag-prefix:
+        type: string
+        required: false
+        default: v
+      release-name:
+        type: string
+        required: false
+        default: ""
+      changelog-path:
+        type: string
+        required: false
+        default: CHANGELOG.md
+      release-notes-output:
+        type: string
+        required: false
+        default: release-notes.md
+      fallback-notes:
+        type: string
+        required: false
+        default: ""
+      validate-clean:
+        type: boolean
+        required: false
+        default: false
+      validate-version-files:
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  release-prepare:
+    runs-on: ${{ inputs.runner }}
+    outputs:
+      version: ${{ steps.prepare.outputs.version }}
+      tag-name: ${{ steps.prepare.outputs.tag-name }}
+      release-name: ${{ steps.prepare.outputs.release-name }}
+      release-notes: ${{ steps.prepare.outputs.release-notes }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: prepare
+        uses: cobycloud/actions/actions/release-prepare@main
+        with:
+          version: ${{ inputs.version }}
+          tag-prefix: ${{ inputs.tag-prefix }}
+          release-name: ${{ inputs.release-name }}
+          changelog-path: ${{ inputs.changelog-path }}
+          release-notes-output: ${{ inputs.release-notes-output }}
+          fallback-notes: ${{ inputs.fallback-notes }}
+          validate-clean: ${{ inputs.validate-clean }}
+          validate-version-files: ${{ inputs.validate-version-files }}
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: ${{ steps.prepare.outputs.release-notes }}

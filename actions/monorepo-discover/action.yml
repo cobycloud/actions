@@ -1,0 +1,96 @@
+name: Monorepo Discover
+description: Discover monorepo package cells from configured globs and optional changed-file filtering.
+inputs:
+  package-globs:
+    description: Newline-delimited package directory globs.
+    required: false
+    default: |
+      packages/*
+      apps/*
+      pkgs/*/*
+  ecosystem:
+    description: Ecosystem label attached to discovered cells.
+    required: false
+    default: generic
+  changed-only:
+    description: Only include packages touched by changed files.
+    required: false
+    default: "false"
+  base-ref:
+    description: Base ref for changed file detection.
+    required: false
+    default: origin/main
+  head-ref:
+    description: Head ref for changed file detection.
+    required: false
+    default: HEAD
+outputs:
+  matrix-json:
+    description: JSON array of package cells.
+    value: ${{ steps.discover.outputs.matrix_json }}
+  package-count:
+    description: Number of discovered packages.
+    value: ${{ steps.discover.outputs.package_count }}
+runs:
+  using: composite
+  steps:
+    - name: Discover packages
+      id: discover
+      shell: bash
+      env:
+        PACKAGE_GLOBS: ${{ inputs.package-globs }}
+        ECOSYSTEM: ${{ inputs.ecosystem }}
+        CHANGED_ONLY: ${{ inputs.changed-only }}
+        BASE_REF: ${{ inputs.base-ref }}
+        HEAD_REF: ${{ inputs.head-ref }}
+      run: |
+        set -euo pipefail
+        node <<'NODE'
+        const fs = require("fs");
+        const cp = require("child_process");
+        const path = require("path");
+        const globs = process.env.PACKAGE_GLOBS.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+        const ecosystem = process.env.ECOSYSTEM || "generic";
+        const changedOnly = process.env.CHANGED_ONLY === "true";
+        let changed = [];
+        if (changedOnly) {
+          try {
+            changed = cp.execFileSync("git", ["diff", "--name-only", process.env.BASE_REF, process.env.HEAD_REF], {encoding: "utf8"})
+              .split(/\r?\n/).filter(Boolean).map(p => p.replaceAll("\\", "/"));
+          } catch (_) {
+            changed = [];
+          }
+        }
+        function globDirs(pattern) {
+          const parts = pattern.replaceAll("\\", "/").split("/").filter(Boolean);
+          let dirs = ["."];
+          for (const part of parts) {
+            const next = [];
+            for (const dir of dirs) {
+              if (part === "*") {
+                if (!fs.existsSync(dir)) continue;
+                for (const entry of fs.readdirSync(dir, {withFileTypes: true})) {
+                  if (entry.isDirectory()) next.push(path.posix.join(dir === "." ? "" : dir, entry.name));
+                }
+              } else {
+                const candidate = path.posix.join(dir === "." ? "" : dir, part);
+                if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) next.push(candidate);
+              }
+            }
+            dirs = next;
+          }
+          return dirs.map(d => d.replace(/^\.\//, ""));
+        }
+        const seen = new Set();
+        const cells = [];
+        for (const glob of globs) {
+          for (const dir of globDirs(glob)) {
+            if (seen.has(dir)) continue;
+            if (changedOnly && !changed.some(file => file === dir || file.startsWith(dir + "/"))) continue;
+            seen.add(dir);
+            cells.push({name: path.posix.basename(dir), path: dir, ecosystem});
+          }
+        }
+        const json = JSON.stringify(cells);
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, `matrix_json=${json}\npackage_count=${cells.length}\n`);
+        NODE

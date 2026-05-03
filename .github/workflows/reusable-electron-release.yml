@@ -1,0 +1,51 @@
+name: Reusable Electron Release
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      node-version:
+        type: string
+        required: false
+        default: "20"
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      install-command:
+        type: string
+        required: false
+        default: npm ci
+      build-command:
+        type: string
+        required: false
+        default: npm run dist
+      artifact-path:
+        type: string
+        required: false
+        default: dist/**
+      artifact-name:
+        type: string
+        required: false
+        default: electron-artifact
+
+permissions:
+  contents: read
+
+jobs:
+  electron-release:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/electron-artifact-build@main
+        with:
+          node-version: ${{ inputs.node-version }}
+          working-directory: ${{ inputs.working-directory }}
+          install-command: ${{ inputs.install-command }}
+          build-command: ${{ inputs.build-command }}
+          artifact-path: ${{ inputs.artifact-path }}
+          artifact-name: ${{ inputs.artifact-name }}

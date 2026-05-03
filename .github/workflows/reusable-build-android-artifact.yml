@@ -1,0 +1,51 @@
+name: Reusable Build Android Artifact
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      java-version:
+        type: string
+        required: false
+        default: "17"
+      setup-command:
+        type: string
+        required: false
+        default: ""
+      gradle-command:
+        type: string
+        required: false
+        default: ./gradlew assembleRelease
+      artifact-path:
+        type: string
+        required: false
+        default: "**/build/outputs/**/*.apk"
+      artifact-name:
+        type: string
+        required: false
+        default: android-artifact
+
+permissions:
+  contents: read
+
+jobs:
+  build-android-artifact:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/android-artifact-build@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          java-version: ${{ inputs.java-version }}
+          setup-command: ${{ inputs.setup-command }}
+          gradle-command: ${{ inputs.gradle-command }}
+          artifact-path: ${{ inputs.artifact-path }}
+          artifact-name: ${{ inputs.artifact-name }}

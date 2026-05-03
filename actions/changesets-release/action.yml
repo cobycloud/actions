@@ -1,0 +1,71 @@
+name: Changesets Release
+description: Create a Changesets version PR or publish packages using changesets/action.
+inputs:
+  node-version:
+    description: Node.js version to install.
+    required: false
+    default: "20"
+  package-directory:
+    description: Directory containing the Changesets config and package manifests.
+    required: false
+    default: "."
+  github-token:
+    description: GitHub token used by changesets/action.
+    required: true
+  npm-token:
+    description: Optional npm token used when publish-command publishes to npm.
+    required: false
+    default: ""
+  version-command:
+    description: Command that versions packages and updates changelogs.
+    required: false
+    default: npx changeset version
+  publish-command:
+    description: Command that publishes packages.
+    required: false
+    default: npx changeset publish
+  commit:
+    description: Version PR commit message.
+    required: false
+    default: "chore: version packages"
+  title:
+    description: Version PR title.
+    required: false
+    default: "chore: version packages"
+  create-github-releases:
+    description: Create GitHub Releases through changesets/action.
+    required: false
+    default: "false"
+outputs:
+  published:
+    description: Whether changesets/action published packages.
+    value: ${{ steps.changesets.outputs.published }}
+  published-packages:
+    description: Published packages JSON from changesets/action.
+    value: ${{ steps.changesets.outputs.publishedPackages }}
+  pull-request-number:
+    description: Version PR number from changesets/action.
+    value: ${{ steps.changesets.outputs.pullRequestNumber }}
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: ${{ inputs.package-directory }}/package-lock.json
+
+    - name: Run Changesets release
+      id: changesets
+      uses: changesets/action@v1
+      with:
+        cwd: ${{ inputs.package-directory }}
+        version: ${{ inputs.version-command }}
+        publish: ${{ inputs.publish-command }}
+        commit: ${{ inputs.commit }}
+        title: ${{ inputs.title }}
+        createGithubReleases: ${{ inputs.create-github-releases }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        NPM_TOKEN: ${{ inputs.npm-token }}

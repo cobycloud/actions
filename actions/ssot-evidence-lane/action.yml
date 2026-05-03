@@ -1,0 +1,54 @@
+name: SSOT Evidence Lane
+description: Run an evidence command and upload SSOT evidence artifacts.
+inputs:
+  working-directory:
+    description: Repository directory where evidence commands execute.
+    required: false
+    default: "."
+  registry-path:
+    description: SSOT registry path.
+    required: false
+    default: .ssot/registry.json
+  evidence-id:
+    description: Evidence ID or lane identifier.
+    required: false
+    default: ""
+  boundary-id:
+    description: Optional boundary ID the evidence supports.
+    required: false
+    default: ""
+  profile-id:
+    description: Optional profile ID the evidence supports.
+    required: false
+    default: ""
+  evidence-command:
+    description: Command that generates evidence artifacts.
+    required: true
+  evidence-path:
+    description: Evidence output path to upload.
+    required: false
+    default: evidence
+  artifact-name:
+    description: Uploaded evidence artifact name.
+    required: false
+    default: ssot-evidence
+runs:
+  using: composite
+  steps:
+    - name: Run SSOT evidence lane
+      shell: bash
+      env:
+        SSOT_REGISTRY_PATH: ${{ inputs.registry-path }}
+        SSOT_EVIDENCE_ID: ${{ inputs.evidence-id }}
+        SSOT_BOUNDARY_ID: ${{ inputs.boundary-id }}
+        SSOT_PROFILE_ID: ${{ inputs.profile-id }}
+        SSOT_EVIDENCE_PATH: ${{ inputs.evidence-path }}
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.evidence-command }}
+
+    - name: Upload SSOT evidence
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.working-directory }}/${{ inputs.evidence-path }}
+        if-no-files-found: error

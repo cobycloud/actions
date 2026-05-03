@@ -1,0 +1,61 @@
+name: Electron Artifact Build
+description: Set up Node, build Electron desktop artifacts, and upload installers.
+inputs:
+  node-version:
+    description: Node.js version.
+    required: false
+    default: "20"
+  working-directory:
+    description: Electron project directory.
+    required: false
+    default: "."
+  install-command:
+    description: Dependency install command.
+    required: false
+    default: npm ci
+  build-command:
+    description: Electron build/package command.
+    required: false
+    default: npm run dist
+  artifact-path:
+    description: Built installer path or glob.
+    required: false
+    default: dist/**
+  artifact-name:
+    description: Uploaded artifact name.
+    required: false
+    default: electron-artifact
+  cache:
+    description: Cache mode for setup-node.
+    required: false
+    default: npm
+  cache-dependency-path:
+    description: Dependency file path for setup-node cache.
+    required: false
+    default: package-lock.json
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.cache }}
+        cache-dependency-path: ${{ inputs.working-directory }}/${{ inputs.cache-dependency-path }}
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.install-command }}
+
+    - name: Build Electron artifact
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.build-command }}
+
+    - name: Upload Electron artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.artifact-path }}
+        if-no-files-found: error

@@ -1,0 +1,81 @@
+name: Reusable npm Publish
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      node-version:
+        type: string
+        required: false
+        default: "20"
+      package-directory:
+        type: string
+        required: false
+        default: "."
+      registry-url:
+        type: string
+        required: false
+        default: https://registry.npmjs.org
+      scope:
+        type: string
+        required: false
+        default: ""
+      install-command:
+        type: string
+        required: false
+        default: npm ci
+      build-command:
+        type: string
+        required: false
+        default: ""
+      test-command:
+        type: string
+        required: false
+        default: ""
+      tag:
+        type: string
+        required: false
+        default: latest
+      access:
+        type: string
+        required: false
+        default: public
+      provenance:
+        type: boolean
+        required: false
+        default: true
+      dry-run:
+        type: boolean
+        required: false
+        default: false
+    secrets:
+      NPM_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/npm-publish@main
+        with:
+          node-version: ${{ inputs.node-version }}
+          package-directory: ${{ inputs.package-directory }}
+          registry-url: ${{ inputs.registry-url }}
+          scope: ${{ inputs.scope }}
+          npm-token: ${{ secrets.NPM_TOKEN }}
+          install-command: ${{ inputs.install-command }}
+          build-command: ${{ inputs.build-command }}
+          test-command: ${{ inputs.test-command }}
+          tag: ${{ inputs.tag }}
+          access: ${{ inputs.access }}
+          provenance: ${{ inputs.provenance }}
+          dry-run: ${{ inputs.dry-run }}

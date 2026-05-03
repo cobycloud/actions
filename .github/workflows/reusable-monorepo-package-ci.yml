@@ -1,0 +1,83 @@
+name: Reusable Monorepo Package CI
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      package-cells:
+        type: string
+        required: true
+      python-version:
+        type: string
+        required: false
+        default: "3.12"
+      node-version:
+        type: string
+        required: false
+        default: "20"
+      pnpm-version:
+        type: string
+        required: false
+        default: "9"
+      uv-install-command:
+        type: string
+        required: false
+        default: uv sync --all-groups --frozen
+      uv-test-command:
+        type: string
+        required: false
+        default: uv run pytest
+      pnpm-install-command:
+        type: string
+        required: false
+        default: pnpm install --frozen-lockfile
+      pnpm-test-command:
+        type: string
+        required: false
+        default: pnpm test --if-present
+      fail-fast:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  package-ci:
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        package_cell: ${{ fromJSON(inputs.package-cells) }}
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: uv package cell
+        if: ${{ matrix.package_cell.ecosystem == 'uv' || matrix.package_cell.ecosystem == 'python' }}
+        uses: cobycloud/actions/actions/uv-monorepo-ci@main
+        with:
+          python-version: ${{ inputs.python-version }}
+          package-path: ${{ matrix.package_cell.path }}
+          install-command: ${{ inputs.uv-install-command }}
+          test-command: ${{ inputs.uv-test-command }}
+
+      - name: pnpm package cell
+        if: ${{ matrix.package_cell.ecosystem == 'pnpm' || matrix.package_cell.ecosystem == 'node' }}
+        uses: cobycloud/actions/actions/pnpm-monorepo-ci@main
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          package-path: ${{ matrix.package_cell.path }}
+          install-command: ${{ inputs.pnpm-install-command }}
+          test-command: ${{ inputs.pnpm-test-command }}
+
+      - name: Validate package cell ecosystem
+        if: ${{ matrix.package_cell.ecosystem != 'uv' && matrix.package_cell.ecosystem != 'python' && matrix.package_cell.ecosystem != 'pnpm' && matrix.package_cell.ecosystem != 'node' }}
+        shell: bash
+        run: |
+          echo "Unsupported package cell ecosystem: ${{ matrix.package_cell.ecosystem }}" >&2
+          exit 1

@@ -1,0 +1,54 @@
+name: Reusable Cross Platform Command
+
+on:
+  workflow_call:
+    inputs:
+      runners:
+        type: string
+        required: false
+        default: '["ubuntu-latest","windows-latest","macos-latest"]'
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      command:
+        type: string
+        required: false
+        default: ""
+      linux-command:
+        type: string
+        required: false
+        default: ""
+      macos-command:
+        type: string
+        required: false
+        default: ""
+      windows-command:
+        type: string
+        required: false
+        default: ""
+      fail-fast:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  cross-platform-command:
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        runner: ${{ fromJSON(inputs.runners) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/cross-platform-command@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          command: ${{ inputs.command }}
+          linux-command: ${{ inputs.linux-command }}
+          macos-command: ${{ inputs.macos-command }}
+          windows-command: ${{ inputs.windows-command }}

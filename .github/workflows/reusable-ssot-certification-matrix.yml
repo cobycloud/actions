@@ -1,0 +1,67 @@
+name: Reusable SSOT Certification Matrix
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      profile-ids:
+        type: string
+        required: true
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      registry-path:
+        type: string
+        required: false
+        default: .ssot/registry.json
+      boundary-id:
+        type: string
+        required: false
+        default: ""
+      ssot-command:
+        type: string
+        required: false
+        default: uv run ssot
+      certification-command:
+        type: string
+        required: false
+        default: ""
+      evidence-path:
+        type: string
+        required: false
+        default: certification-evidence
+      fail-closed:
+        type: boolean
+        required: false
+        default: true
+      fail-fast:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  ssot-certification:
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        profile-id: ${{ fromJSON(inputs.profile-ids) }}
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cobycloud/actions/actions/ssot-certification-profile@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          registry-path: ${{ inputs.registry-path }}
+          profile-id: ${{ matrix.profile-id }}
+          boundary-id: ${{ inputs.boundary-id }}
+          ssot-command: ${{ inputs.ssot-command }}
+          certification-command: ${{ inputs.certification-command }}
+          evidence-path: ${{ inputs.evidence-path }}/${{ matrix.profile-id }}
+          fail-closed: ${{ inputs.fail-closed }}

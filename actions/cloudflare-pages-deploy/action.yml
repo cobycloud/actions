@@ -1,0 +1,64 @@
+name: Cloudflare Pages Deploy
+description: Deploy a static app directory to Cloudflare Pages with Wrangler.
+inputs:
+  working-directory:
+    description: Project directory.
+    required: false
+    default: "."
+  setup-command:
+    description: Optional setup command.
+    required: false
+    default: ""
+  build-command:
+    description: Optional build command before deploy.
+    required: false
+    default: ""
+  output-path:
+    description: Static app output path to deploy.
+    required: false
+    default: dist
+  project-name:
+    description: Cloudflare Pages project name.
+    required: true
+  branch:
+    description: Deployment branch.
+    required: false
+    default: ""
+  wrangler-command:
+    description: Wrangler executable command.
+    required: false
+    default: npx wrangler
+  api-token:
+    description: Cloudflare API token.
+    required: true
+  account-id:
+    description: Cloudflare account ID.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Setup Cloudflare deploy
+      if: ${{ inputs.setup-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.setup-command }}
+
+    - name: Build static app
+      if: ${{ inputs.build-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.build-command }}
+
+    - name: Deploy Cloudflare Pages
+      shell: bash
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        args=(pages deploy "${{ inputs.output-path }}" --project-name "${{ inputs.project-name }}")
+        if [[ -n "${{ inputs.branch }}" ]]; then
+          args+=(--branch "${{ inputs.branch }}")
+        fi
+        ${{ inputs.wrangler-command }} "${args[@]}"

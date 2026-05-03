@@ -1,0 +1,53 @@
+name: Reusable Netlify Deploy
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      setup-command:
+        type: string
+        required: false
+        default: ""
+      build-command:
+        type: string
+        required: false
+        default: ""
+      output-path:
+        type: string
+        required: false
+        default: dist
+      production:
+        type: boolean
+        required: false
+        default: true
+    secrets:
+      NETLIFY_SITE_ID:
+        required: true
+      NETLIFY_AUTH_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  netlify-deploy:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/netlify-deploy@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          setup-command: ${{ inputs.setup-command }}
+          build-command: ${{ inputs.build-command }}
+          output-path: ${{ inputs.output-path }}
+          production: ${{ inputs.production }}
+          site-id: ${{ secrets.NETLIFY_SITE_ID }}
+          auth-token: ${{ secrets.NETLIFY_AUTH_TOKEN }}

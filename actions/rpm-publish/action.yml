@@ -1,0 +1,43 @@
+name: RPM Publish
+description: Publish RPM packages to a YUM/DNF repository using caller-provided commands.
+inputs:
+  working-directory:
+    description: Directory containing RPM packages or repository tooling.
+    required: false
+    default: "."
+  setup-command:
+    description: Optional command to install or configure RPM repository tooling.
+    required: false
+    default: ""
+  publish-command:
+    description: Command that publishes RPM packages to the repository.
+    required: true
+  package-path:
+    description: RPM package path or glob to verify before publish.
+    required: false
+    default: "*.rpm"
+runs:
+  using: composite
+  steps:
+    - name: Verify RPM packages
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        shopt -s nullglob globstar
+        files=( ${{ inputs.package-path }} )
+        if [[ ${#files[@]} -eq 0 ]]; then
+          echo "No RPM packages matched: ${{ inputs.package-path }}" >&2
+          exit 1
+        fi
+
+    - name: Setup RPM publish tooling
+      if: ${{ inputs.setup-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.setup-command }}
+
+    - name: Publish RPM packages
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.publish-command }}

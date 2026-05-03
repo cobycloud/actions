@@ -1,0 +1,54 @@
+name: Monorepo Artifact Join
+description: Download matrix artifacts and verify the collected artifact set.
+inputs:
+  artifact-pattern:
+    description: Artifact name or pattern accepted by actions/download-artifact.
+    required: false
+    default: ""
+  output-directory:
+    description: Directory where artifacts are downloaded.
+    required: false
+    default: collected-artifacts
+  expected-count:
+    description: Minimum expected artifact file count. Zero disables the check.
+    required: false
+    default: "0"
+  merged-artifact-name:
+    description: Uploaded merged artifact name.
+    required: false
+    default: monorepo-artifacts
+runs:
+  using: composite
+  steps:
+    - name: Download all artifacts
+      if: ${{ inputs.artifact-pattern == '' }}
+      uses: actions/download-artifact@v4
+      with:
+        path: ${{ inputs.output-directory }}
+        merge-multiple: true
+
+    - name: Download matching artifacts
+      if: ${{ inputs.artifact-pattern != '' }}
+      uses: actions/download-artifact@v4
+      with:
+        pattern: ${{ inputs.artifact-pattern }}
+        path: ${{ inputs.output-directory }}
+        merge-multiple: true
+
+    - name: Verify artifact set
+      shell: bash
+      run: |
+        set -euo pipefail
+        count=$(find "${{ inputs.output-directory }}" -type f | wc -l | tr -d ' ')
+        expected="${{ inputs.expected-count }}"
+        if [[ "$expected" != "0" && "$count" -lt "$expected" ]]; then
+          echo "Expected at least $expected artifact files, found $count" >&2
+          exit 1
+        fi
+
+    - name: Upload merged artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.merged-artifact-name }}
+        path: ${{ inputs.output-directory }}
+        if-no-files-found: error

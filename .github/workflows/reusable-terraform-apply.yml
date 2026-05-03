@@ -1,0 +1,56 @@
+name: Reusable Terraform Apply
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      environment:
+        type: string
+        required: false
+        default: ""
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      terraform-version:
+        type: string
+        required: false
+        default: latest
+      init-command:
+        type: string
+        required: false
+        default: terraform init
+      apply-command:
+        type: string
+        required: false
+        default: terraform apply -auto-approve
+      plan-artifact-name:
+        type: string
+        required: false
+        default: ""
+      plan-path:
+        type: string
+        required: false
+        default: tfplan
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-apply:
+    runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/terraform-apply@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          terraform-version: ${{ inputs.terraform-version }}
+          init-command: ${{ inputs.init-command }}
+          apply-command: ${{ inputs.apply-command }}
+          plan-artifact-name: ${{ inputs.plan-artifact-name }}
+          plan-path: ${{ inputs.plan-path }}

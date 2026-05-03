@@ -1,0 +1,40 @@
+name: Reusable TOML Validate
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      toml-globs:
+        type: string
+        required: false
+        default: |
+          pyproject.toml
+          **/pyproject.toml
+          Cargo.toml
+          **/Cargo.toml
+      require-known-package-section:
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  toml-validate:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/toml-validate@main
+        with:
+          toml-globs: ${{ inputs.toml-globs }}
+          require-known-package-section: ${{ inputs.require-known-package-section }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: toml-validate
+          path: reports/toml-validate.*

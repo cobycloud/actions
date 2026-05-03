@@ -1,0 +1,61 @@
+name: Reusable Tauri Release
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      node-version:
+        type: string
+        required: false
+        default: "20"
+      rust-toolchain:
+        type: string
+        required: false
+        default: stable
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      linux-deps-command:
+        type: string
+        required: false
+        default: ""
+      install-command:
+        type: string
+        required: false
+        default: npm ci
+      build-command:
+        type: string
+        required: false
+        default: npm run tauri build
+      artifact-path:
+        type: string
+        required: false
+        default: src-tauri/target/release/bundle/**
+      artifact-name:
+        type: string
+        required: false
+        default: tauri-artifact
+
+permissions:
+  contents: read
+
+jobs:
+  tauri-release:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/tauri-artifact-build@main
+        with:
+          node-version: ${{ inputs.node-version }}
+          rust-toolchain: ${{ inputs.rust-toolchain }}
+          working-directory: ${{ inputs.working-directory }}
+          linux-deps-command: ${{ inputs.linux-deps-command }}
+          install-command: ${{ inputs.install-command }}
+          build-command: ${{ inputs.build-command }}
+          artifact-path: ${{ inputs.artifact-path }}
+          artifact-name: ${{ inputs.artifact-name }}

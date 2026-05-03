@@ -1,0 +1,59 @@
+name: Reusable SSOT Boundary Gate
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      registry-path:
+        type: string
+        required: false
+        default: .ssot/registry.json
+      boundary-id:
+        type: string
+        required: true
+      ssot-command:
+        type: string
+        required: false
+        default: uv run ssot
+      gate-command:
+        type: string
+        required: false
+        default: ""
+      require-frozen:
+        type: boolean
+        required: false
+        default: true
+      fail-closed:
+        type: boolean
+        required: false
+        default: true
+      report-path:
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  ssot-boundary-gate:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cobycloud/actions/actions/ssot-boundary-gate@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          registry-path: ${{ inputs.registry-path }}
+          boundary-id: ${{ inputs.boundary-id }}
+          ssot-command: ${{ inputs.ssot-command }}
+          gate-command: ${{ inputs.gate-command }}
+          require-frozen: ${{ inputs.require-frozen }}
+          fail-closed: ${{ inputs.fail-closed }}
+          report-path: ${{ inputs.report-path }}

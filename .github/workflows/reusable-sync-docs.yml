@@ -1,0 +1,60 @@
+name: Reusable Sync Docs
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      sync-command:
+        type: string
+        required: true
+      paths:
+        type: string
+        required: false
+        default: docs
+      commit-message:
+        type: string
+        required: false
+        default: Sync docs
+      branch:
+        type: string
+        required: false
+        default: sync-docs
+      title:
+        type: string
+        required: false
+        default: Sync docs
+      body:
+        type: string
+        required: false
+        default: Automated docs sync.
+    secrets:
+      GH_TOKEN:
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-docs:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/sync-docs@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          sync-command: ${{ inputs.sync-command }}
+          paths: ${{ inputs.paths }}
+          commit-message: ${{ inputs.commit-message }}
+          branch: ${{ inputs.branch }}
+          title: ${{ inputs.title }}
+          body: ${{ inputs.body }}
+          token: ${{ secrets.GH_TOKEN }}

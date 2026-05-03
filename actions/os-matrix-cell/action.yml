@@ -1,0 +1,219 @@
+name: OS Matrix Cell
+description: Run one Node, Python, Rust, or generic command cell on the current runner OS.
+inputs:
+  ecosystem:
+    description: Ecosystem to run. Supported values are node, python, rust, and generic.
+    required: true
+  version:
+    description: Runtime/toolchain version. Empty uses the ecosystem default.
+    required: false
+    default: ""
+  working-directory:
+    description: Directory where commands execute.
+    required: false
+    default: "."
+  install-command:
+    description: Dependency install command. Empty uses the ecosystem default.
+    required: false
+    default: ""
+  run-command:
+    description: Main validation command. Empty uses the ecosystem default.
+    required: false
+    default: ""
+  linux-command:
+    description: Generic Linux command override.
+    required: false
+    default: ""
+  macos-command:
+    description: Generic macOS command override.
+    required: false
+    default: ""
+  windows-command:
+    description: Generic Windows command override.
+    required: false
+    default: ""
+  compute-monorepo-pythonpath:
+    description: Add repo root and pkgs/* package/src folders to PYTHONPATH for Python cells.
+    required: false
+    default: "false"
+  rust-components:
+    description: Rust components to install for Rust cells.
+    required: false
+    default: rustfmt,clippy
+  rust-targets:
+    description: Rust targets to install for Rust cells.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Resolve cell defaults
+      id: defaults
+      shell: bash
+      run: |
+        set -euo pipefail
+        ecosystem="${{ inputs.ecosystem }}"
+        version="${{ inputs.version }}"
+        install="${{ inputs.install-command }}"
+        run_command="${{ inputs.run-command }}"
+        case "$ecosystem" in
+          node)
+            [[ -n "$version" ]] || version="20"
+            [[ -n "$install" ]] || install="npm ci"
+            [[ -n "$run_command" ]] || run_command="npm test --if-present"
+            ;;
+          python)
+            [[ -n "$version" ]] || version="3.12"
+            [[ -n "$install" ]] || install="uv sync --all-groups --frozen"
+            [[ -n "$run_command" ]] || run_command="uv run pytest"
+            ;;
+          rust)
+            [[ -n "$version" ]] || version="stable"
+            [[ -n "$run_command" ]] || run_command="cargo test --all-features"
+            ;;
+          generic)
+            ;;
+          *)
+            echo "Unsupported ecosystem: $ecosystem" >&2
+            exit 1
+            ;;
+        esac
+        {
+          echo "version=$version"
+          echo "install<<EOF"
+          echo "$install"
+          echo "EOF"
+          echo "run_command<<EOF"
+          echo "$run_command"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Setup Node
+      if: ${{ inputs.ecosystem == 'node' }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ steps.defaults.outputs.version }}
+        cache: npm
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+    - name: Install Node dependencies
+      if: ${{ inputs.ecosystem == 'node' && steps.defaults.outputs.install != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ steps.defaults.outputs.install }}
+
+    - name: Run Node command
+      if: ${{ inputs.ecosystem == 'node' && steps.defaults.outputs.run_command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ steps.defaults.outputs.run_command }}
+
+    - name: Setup uv
+      if: ${{ inputs.ecosystem == 'python' }}
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+
+    - name: Setup Python
+      if: ${{ inputs.ecosystem == 'python' }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ steps.defaults.outputs.version }}
+
+    - name: Compute monorepo PYTHONPATH
+      if: ${{ inputs.ecosystem == 'python' && inputs.compute-monorepo-pythonpath == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        PY_PATH="$GITHUB_WORKSPACE"
+        for base in "$GITHUB_WORKSPACE/pkgs/core" "$GITHUB_WORKSPACE/pkgs/apps" "$GITHUB_WORKSPACE/pkgs/engines" "$GITHUB_WORKSPACE/pkgs/base" "$GITHUB_WORKSPACE/pkgs/standards" "$GITHUB_WORKSPACE/pkgs/plugins" "$GITHUB_WORKSPACE/pkgs/community" "$GITHUB_WORKSPACE/pkgs/experimental"; do
+          if [[ -d "$base" ]]; then
+            for child in "$base"/*; do
+              [[ -d "$child" ]] || continue
+              PY_PATH="$PY_PATH:$child"
+              if [[ -d "$child/src" ]]; then
+                PY_PATH="$PY_PATH:$child/src"
+              fi
+            done
+          fi
+        done
+        echo "PYTHONPATH=$PY_PATH" >> "$GITHUB_ENV"
+
+    - name: Install Python dependencies
+      if: ${{ inputs.ecosystem == 'python' && steps.defaults.outputs.install != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ steps.defaults.outputs.install }}
+
+    - name: Run Python command
+      if: ${{ inputs.ecosystem == 'python' && steps.defaults.outputs.run_command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ steps.defaults.outputs.run_command }}
+
+    - name: Setup Rust
+      if: ${{ inputs.ecosystem == 'rust' }}
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ steps.defaults.outputs.version }}
+        components: ${{ inputs.rust-components }}
+        targets: ${{ inputs.rust-targets }}
+
+    - name: Cache Cargo
+      if: ${{ inputs.ecosystem == 'rust' }}
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: ${{ inputs.working-directory }}
+
+    - name: Run Rust command
+      if: ${{ inputs.ecosystem == 'rust' && steps.defaults.outputs.run_command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ steps.defaults.outputs.run_command }}
+
+    - name: Run generic Linux command
+      if: ${{ inputs.ecosystem == 'generic' && runner.os == 'Linux' && (inputs.run-command != '' || inputs.linux-command != '') }}
+      shell: bash
+      env:
+        DEFAULT_COMMAND: ${{ inputs.run-command }}
+        OS_COMMAND: ${{ inputs.linux-command }}
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        command="$OS_COMMAND"
+        if [[ -z "$command" ]]; then
+          command="$DEFAULT_COMMAND"
+        fi
+        eval "$command"
+
+    - name: Run generic macOS command
+      if: ${{ inputs.ecosystem == 'generic' && runner.os == 'macOS' && (inputs.run-command != '' || inputs.macos-command != '') }}
+      shell: bash
+      env:
+        DEFAULT_COMMAND: ${{ inputs.run-command }}
+        OS_COMMAND: ${{ inputs.macos-command }}
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        command="$OS_COMMAND"
+        if [[ -z "$command" ]]; then
+          command="$DEFAULT_COMMAND"
+        fi
+        eval "$command"
+
+    - name: Run generic Windows command
+      if: ${{ inputs.ecosystem == 'generic' && runner.os == 'Windows' && (inputs.run-command != '' || inputs.windows-command != '') }}
+      shell: pwsh
+      env:
+        DEFAULT_COMMAND: ${{ inputs.run-command }}
+        OS_COMMAND: ${{ inputs.windows-command }}
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        $command = $env:OS_COMMAND
+        if (-not $command) {
+          $command = $env:DEFAULT_COMMAND
+        }
+        if (-not $command) {
+          exit 0
+        }
+        Invoke-Expression $command

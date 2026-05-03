@@ -1,0 +1,81 @@
+name: Playwright CI
+description: Set up Node, install Playwright browsers, run e2e tests, and upload reports.
+inputs:
+  node-version:
+    description: Node.js version to install.
+    required: false
+    default: "20"
+  working-directory:
+    description: Directory containing package.json and Playwright config.
+    required: false
+    default: "."
+  install-command:
+    description: Dependency install command.
+    required: false
+    default: npm ci
+  browser-install-command:
+    description: Playwright browser install command.
+    required: false
+    default: npx playwright install --with-deps
+  test-command:
+    description: Playwright test command.
+    required: false
+    default: npx playwright test
+  cache:
+    description: Cache mode passed to actions/setup-node.
+    required: false
+    default: npm
+  cache-dependency-path:
+    description: Dependency file path for setup-node cache.
+    required: false
+    default: package-lock.json
+  upload-artifacts:
+    description: Upload Playwright report and test-results artifacts.
+    required: false
+    default: "true"
+  report-path:
+    description: Playwright HTML report path.
+    required: false
+    default: playwright-report
+  results-path:
+    description: Playwright results path containing traces, screenshots, and videos.
+    required: false
+    default: test-results
+  artifact-name:
+    description: Uploaded artifact name.
+    required: false
+    default: playwright-artifacts
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.cache }}
+        cache-dependency-path: ${{ inputs.working-directory }}/${{ inputs.cache-dependency-path }}
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.install-command }}
+
+    - name: Install Playwright browsers
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.browser-install-command }}
+
+    - name: Run Playwright
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.test-command }}
+
+    - name: Upload Playwright artifacts
+      if: ${{ inputs.upload-artifacts == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          ${{ inputs.working-directory }}/${{ inputs.report-path }}
+          ${{ inputs.working-directory }}/${{ inputs.results-path }}
+        if-no-files-found: warn

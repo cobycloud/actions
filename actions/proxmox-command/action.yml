@@ -1,0 +1,43 @@
+name: Proxmox Command
+description: Run Proxmox plan or apply commands through caller-owned tooling.
+inputs:
+  working-directory:
+    description: Directory containing Proxmox IaC or scripts.
+    required: false
+    default: "."
+  setup-command:
+    description: Optional command to install or configure Proxmox tooling.
+    required: false
+    default: ""
+  command:
+    description: Proxmox command to run.
+    required: true
+  upload-artifact-path:
+    description: Optional output path to upload.
+    required: false
+    default: ""
+  artifact-name:
+    description: Uploaded artifact name.
+    required: false
+    default: proxmox-output
+runs:
+  using: composite
+  steps:
+    - name: Setup Proxmox tooling
+      if: ${{ inputs.setup-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.setup-command }}
+
+    - name: Run Proxmox command
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.command }}
+
+    - name: Upload Proxmox output
+      if: ${{ inputs.upload-artifact-path != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.working-directory }}/${{ inputs.upload-artifact-path }}
+        if-no-files-found: warn

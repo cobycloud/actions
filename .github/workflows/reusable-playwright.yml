@@ -1,0 +1,66 @@
+name: Reusable Playwright CI
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      node-version:
+        type: string
+        required: false
+        default: "20"
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      install-command:
+        type: string
+        required: false
+        default: npm ci
+      browser-install-command:
+        type: string
+        required: false
+        default: npx playwright install --with-deps
+      test-command:
+        type: string
+        required: false
+        default: npx playwright test
+      upload-artifacts:
+        type: boolean
+        required: false
+        default: true
+      report-path:
+        type: string
+        required: false
+        default: playwright-report
+      results-path:
+        type: string
+        required: false
+        default: test-results
+      artifact-name:
+        type: string
+        required: false
+        default: playwright-artifacts
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/playwright-ci@main
+        with:
+          node-version: ${{ inputs.node-version }}
+          working-directory: ${{ inputs.working-directory }}
+          install-command: ${{ inputs.install-command }}
+          browser-install-command: ${{ inputs.browser-install-command }}
+          test-command: ${{ inputs.test-command }}
+          upload-artifacts: ${{ inputs.upload-artifacts }}
+          report-path: ${{ inputs.report-path }}
+          results-path: ${{ inputs.results-path }}
+          artifact-name: ${{ inputs.artifact-name }}

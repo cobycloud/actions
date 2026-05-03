@@ -1,0 +1,77 @@
+name: Node Lint Typecheck
+description: Set up Node and run install, lint, typecheck, test, and build commands.
+inputs:
+  node-version:
+    description: Node.js version to install.
+    required: false
+    default: "20"
+  working-directory:
+    description: Directory containing package.json.
+    required: false
+    default: "."
+  install-command:
+    description: Dependency install command.
+    required: false
+    default: npm ci
+  lint-command:
+    description: Lint command. Leave empty to skip.
+    required: false
+    default: npm run lint --if-present
+  typecheck-command:
+    description: Typecheck command. Leave empty to skip.
+    required: false
+    default: npm run typecheck --if-present
+  test-command:
+    description: Test command. Leave empty to skip.
+    required: false
+    default: npm test --if-present
+  build-command:
+    description: Build command. Leave empty to skip.
+    required: false
+    default: npm run build --if-present
+  cache:
+    description: Cache mode passed to actions/setup-node.
+    required: false
+    default: npm
+  cache-dependency-path:
+    description: Dependency file path for setup-node cache.
+    required: false
+    default: package-lock.json
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.cache }}
+        cache-dependency-path: ${{ inputs.working-directory }}/${{ inputs.cache-dependency-path }}
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.install-command }}
+
+    - name: Lint
+      if: ${{ inputs.lint-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.lint-command }}
+
+    - name: Typecheck
+      if: ${{ inputs.typecheck-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.typecheck-command }}
+
+    - name: Test
+      if: ${{ inputs.test-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.test-command }}
+
+    - name: Build
+      if: ${{ inputs.build-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.build-command }}

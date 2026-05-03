@@ -1,0 +1,33 @@
+name: Reusable Workflow Dispatch Batches
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      batches-json:
+        type: string
+        required: true
+      repo:
+        type: string
+        required: false
+        default: ""
+    secrets:
+      GH_TOKEN:
+        required: true
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch-batches:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: cobycloud/actions/actions/workflow-dispatch-batches@main
+        with:
+          batches-json: ${{ inputs.batches-json }}
+          repo: ${{ inputs.repo }}
+          token: ${{ secrets.GH_TOKEN }}

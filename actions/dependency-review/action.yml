@@ -1,0 +1,67 @@
+name: Dependency Review
+description: Run GitHub dependency review with reusable policy inputs.
+inputs:
+  fail-on-severity:
+    description: Minimum vulnerability severity that fails the job.
+    required: false
+    default: high
+  allow-licenses:
+    description: Comma-separated allowed licenses.
+    required: false
+    default: ""
+  deny-licenses:
+    description: Comma-separated denied licenses.
+    required: false
+    default: ""
+  deny-packages:
+    description: Comma-separated denied package specifiers.
+    required: false
+    default: ""
+  allow-dependencies-licenses:
+    description: Comma-separated packages exempted from license policy.
+    required: false
+    default: ""
+  vulnerability-check:
+    description: Enable vulnerability checks.
+    required: false
+    default: "true"
+  license-check:
+    description: Enable license checks.
+    required: false
+    default: "true"
+  comment-summary-in-pr:
+    description: Whether dependency-review-action should comment a summary in PRs.
+    required: false
+    default: never
+  retry-on-snapshot-warnings:
+    description: Retry when dependency snapshot warnings occur.
+    required: false
+    default: "true"
+  config-file:
+    description: Optional dependency review config file.
+    required: false
+    default: ""
+  checkout:
+    description: Checkout repository before dependency review.
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      if: ${{ inputs.checkout == 'true' }}
+      uses: actions/checkout@v4
+
+    - name: Dependency review
+      uses: actions/dependency-review-action@v4
+      with:
+        fail-on-severity: ${{ inputs.fail-on-severity }}
+        allow-licenses: ${{ inputs.allow-licenses }}
+        deny-licenses: ${{ inputs.deny-licenses }}
+        deny-packages: ${{ inputs.deny-packages }}
+        allow-dependencies-licenses: ${{ inputs.allow-dependencies-licenses }}
+        vulnerability-check: ${{ inputs.vulnerability-check }}
+        license-check: ${{ inputs.license-check }}
+        comment-summary-in-pr: ${{ inputs.comment-summary-in-pr }}
+        retry-on-snapshot-warnings: ${{ inputs.retry-on-snapshot-warnings }}
+        config-file: ${{ inputs.config-file }}

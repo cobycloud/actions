@@ -1,0 +1,43 @@
+name: APT Publish
+description: Publish Debian packages to an APT repository using caller-provided commands.
+inputs:
+  working-directory:
+    description: Directory containing Debian packages or repository tooling.
+    required: false
+    default: "."
+  setup-command:
+    description: Optional command to install or configure APT repository tooling.
+    required: false
+    default: ""
+  publish-command:
+    description: Command that publishes packages to the APT repository.
+    required: true
+  package-path:
+    description: Debian package path or glob to verify before publish.
+    required: false
+    default: "*.deb"
+runs:
+  using: composite
+  steps:
+    - name: Verify Debian packages
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        shopt -s nullglob globstar
+        files=( ${{ inputs.package-path }} )
+        if [[ ${#files[@]} -eq 0 ]]; then
+          echo "No Debian packages matched: ${{ inputs.package-path }}" >&2
+          exit 1
+        fi
+
+    - name: Setup APT publish tooling
+      if: ${{ inputs.setup-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.setup-command }}
+
+    - name: Publish APT packages
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.publish-command }}

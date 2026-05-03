@@ -1,0 +1,45 @@
+name: Reusable SSOT Validate
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      registry-path:
+        type: string
+        required: false
+        default: .ssot/registry.json
+      ssot-command:
+        type: string
+        required: false
+        default: uv run ssot
+      validate-command:
+        type: string
+        required: false
+        default: ""
+      report-path:
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  ssot-validate:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cobycloud/actions/actions/ssot-validate@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          registry-path: ${{ inputs.registry-path }}
+          ssot-command: ${{ inputs.ssot-command }}
+          validate-command: ${{ inputs.validate-command }}
+          report-path: ${{ inputs.report-path }}

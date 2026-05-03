@@ -1,0 +1,40 @@
+name: Reusable APT Publish
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      setup-command:
+        type: string
+        required: false
+        default: ""
+      publish-command:
+        type: string
+        required: true
+      package-path:
+        type: string
+        required: false
+        default: "*.deb"
+
+permissions:
+  contents: read
+
+jobs:
+  apt-publish:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/apt-publish@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          setup-command: ${{ inputs.setup-command }}
+          publish-command: ${{ inputs.publish-command }}
+          package-path: ${{ inputs.package-path }}

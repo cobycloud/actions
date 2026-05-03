@@ -1,0 +1,34 @@
+name: Reusable Snap Publish
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      snap-file:
+        type: string
+        required: true
+      release:
+        type: string
+        required: false
+        default: stable
+    secrets:
+      SNAPCRAFT_STORE_CREDENTIALS:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  snap-publish:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/snap-publish@main
+        with:
+          snap-file: ${{ inputs.snap-file }}
+          release: ${{ inputs.release }}
+          store-login: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}

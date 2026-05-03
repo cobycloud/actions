@@ -1,0 +1,41 @@
+name: Reusable Python Package Build
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      python-version:
+        type: string
+        required: false
+        default: "3.12"
+      project-path:
+        type: string
+        required: false
+        default: "."
+      out-dir:
+        type: string
+        required: false
+        default: dist
+      artifact-name:
+        type: string
+        required: false
+        default: python-dist
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/python-package-build@main
+        with:
+          python-version: ${{ inputs.python-version }}
+          project-path: ${{ inputs.project-path }}
+          out-dir: ${{ inputs.out-dir }}
+          artifact-name: ${{ inputs.artifact-name }}

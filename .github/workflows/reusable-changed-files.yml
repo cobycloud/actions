@@ -1,0 +1,65 @@
+name: Reusable Changed Files
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      base-ref:
+        type: string
+        required: false
+        default: origin/main
+      head-ref:
+        type: string
+        required: false
+        default: HEAD
+      package-globs:
+        type: string
+        required: false
+        default: |
+          packages/*
+          apps/*
+          pkgs/*/*
+      ecosystem:
+        type: string
+        required: false
+        default: generic
+    outputs:
+      changed-files-json:
+        description: JSON array of changed files.
+        value: ${{ jobs.changed.outputs.changed-files-json }}
+      package-cells-json:
+        description: JSON array of changed package cells.
+        value: ${{ jobs.changed.outputs.package-cells-json }}
+      changed-count:
+        description: Number of changed files.
+        value: ${{ jobs.changed.outputs.changed-count }}
+      package-count:
+        description: Number of changed package cells.
+        value: ${{ jobs.changed.outputs.package-count }}
+
+permissions:
+  contents: read
+
+jobs:
+  changed:
+    runs-on: ${{ inputs.runner }}
+    outputs:
+      changed-files-json: ${{ steps.changed.outputs.changed-files-json }}
+      package-cells-json: ${{ steps.changed.outputs.package-cells-json }}
+      changed-count: ${{ steps.changed.outputs.changed-count }}
+      package-count: ${{ steps.changed.outputs.package-count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: changed
+        uses: cobycloud/actions/actions/changed-files@main
+        with:
+          base-ref: ${{ inputs.base-ref }}
+          head-ref: ${{ inputs.head-ref }}
+          package-globs: ${{ inputs.package-globs }}
+          ecosystem: ${{ inputs.ecosystem }}

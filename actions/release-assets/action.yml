@@ -1,0 +1,76 @@
+name: Release Assets
+description: Download workflow artifacts, normalize release assets, and generate checksum files.
+inputs:
+  artifact-name:
+    description: Optional artifact name to download. Empty downloads all artifacts.
+    required: false
+    default: ""
+  source-path:
+    description: Download/source path for release assets.
+    required: false
+    default: release-assets
+  output-path:
+    description: Normalized output path.
+    required: false
+    default: release-assets-normalized
+  checksum-file:
+    description: Checksum file name.
+    required: false
+    default: SHA256SUMS
+  upload-artifact:
+    description: Upload normalized release assets as a workflow artifact.
+    required: false
+    default: "true"
+  normalized-artifact-name:
+    description: Artifact name for normalized release assets.
+    required: false
+    default: release-assets
+outputs:
+  output-path:
+    description: Directory containing normalized release assets.
+    value: ${{ inputs.output-path }}
+  checksum-file:
+    description: Checksum file path.
+    value: ${{ inputs.output-path }}/${{ inputs.checksum-file }}
+runs:
+  using: composite
+  steps:
+    - name: Download named artifact
+      if: ${{ inputs.artifact-name != '' }}
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.source-path }}
+
+    - name: Download all artifacts
+      if: ${{ inputs.artifact-name == '' }}
+      uses: actions/download-artifact@v4
+      with:
+        path: ${{ inputs.source-path }}
+
+    - name: Normalize assets and generate checksums
+      shell: bash
+      run: |
+        set -euo pipefail
+        src="${{ inputs.source-path }}"
+        out="${{ inputs.output-path }}"
+        rm -rf "$out"
+        mkdir -p "$out"
+        find "$src" -type f -print0 | while IFS= read -r -d '' file; do
+          rel="${file#$src/}"
+          flat="${rel//\//__}"
+          cp "$file" "$out/$flat"
+        done
+        (
+          cd "$out"
+          find . -type f ! -name "${{ inputs.checksum-file }}" -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > "${{ inputs.checksum-file }}"
+        )
+
+    - name: Upload normalized release assets
+      if: ${{ inputs.upload-artifact == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.normalized-artifact-name }}
+        path: ${{ inputs.output-path }}

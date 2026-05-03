@@ -1,0 +1,115 @@
+name: Python Package CI
+description: Run Python package install, compile, test, docs, and build checks for one matrix cell.
+inputs:
+  python-version:
+    description: Python version to install.
+    required: false
+    default: "3.12"
+  package-path:
+    description: Package directory to validate.
+    required: false
+    default: "."
+  install-command:
+    description: Dependency installation command.
+    required: false
+    default: uv sync --all-groups --frozen
+  compile-command:
+    description: Compile/import smoke command. Leave empty to skip.
+    required: false
+    default: uv run python -m compileall .
+  test-command:
+    description: Test command. Leave empty to skip.
+    required: false
+    default: uv run pytest
+  docs-command:
+    description: Documentation command. Leave empty to skip.
+    required: false
+    default: ""
+  build-command:
+    description: Package build command. Leave empty to skip.
+    required: false
+    default: ""
+  compute-monorepo-pythonpath:
+    description: Add repo root and pkgs/* package/src folders to PYTHONPATH.
+    required: false
+    default: "false"
+  uv-cache:
+    description: Enable astral-sh/setup-uv cache.
+    required: false
+    default: "true"
+  artifact-path:
+    description: Optional artifact path to upload after checks.
+    required: false
+    default: ""
+  artifact-name:
+    description: Artifact name used when artifact-path is set.
+    required: false
+    default: python-package-ci-artifacts
+runs:
+  using: composite
+  steps:
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: ${{ inputs.uv-cache }}
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Compute monorepo PYTHONPATH
+      if: ${{ inputs.compute-monorepo-pythonpath == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        PY_PATH="$GITHUB_WORKSPACE"
+        for base in "$GITHUB_WORKSPACE/pkgs/core" "$GITHUB_WORKSPACE/pkgs/apps" "$GITHUB_WORKSPACE/pkgs/engines" "$GITHUB_WORKSPACE/pkgs/base" "$GITHUB_WORKSPACE/pkgs/standards" "$GITHUB_WORKSPACE/pkgs/plugins" "$GITHUB_WORKSPACE/pkgs/community" "$GITHUB_WORKSPACE/pkgs/experimental"; do
+          if [[ -d "$base" ]]; then
+            for child in "$base"/*; do
+              [[ -d "$child" ]] || continue
+              PY_PATH="$PY_PATH:$child"
+              if [[ -d "$child/src" ]]; then
+                PY_PATH="$PY_PATH:$child/src"
+              fi
+            done
+          fi
+        done
+        echo "PYTHONPATH=$PY_PATH" >> "$GITHUB_ENV"
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: ${{ inputs.install-command }}
+
+    - name: Compile
+      if: ${{ inputs.compile-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: ${{ inputs.compile-command }}
+
+    - name: Test
+      if: ${{ inputs.test-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: ${{ inputs.test-command }}
+
+    - name: Docs
+      if: ${{ inputs.docs-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: ${{ inputs.docs-command }}
+
+    - name: Build
+      if: ${{ inputs.build-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: ${{ inputs.build-command }}
+
+    - name: Upload artifacts
+      if: ${{ inputs.artifact-path != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.package-path }}/${{ inputs.artifact-path }}
+        if-no-files-found: warn

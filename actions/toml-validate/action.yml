@@ -1,0 +1,99 @@
+name: TOML Validate
+description: Validate TOML syntax and required metadata sections for pyproject.toml, Cargo.toml, and other TOML files.
+inputs:
+  toml-globs:
+    description: Newline-delimited TOML glob patterns.
+    required: false
+    default: |
+      pyproject.toml
+      **/pyproject.toml
+      Cargo.toml
+      **/Cargo.toml
+  require-known-package-section:
+    description: Require pyproject.toml or Cargo.toml to have known package metadata sections.
+    required: false
+    default: "true"
+  report-json:
+    description: JSON report output path.
+    required: false
+    default: reports/toml-validate.json
+  report-md:
+    description: Markdown report output path.
+    required: false
+    default: reports/toml-validate.md
+outputs:
+  report-json:
+    description: JSON report path.
+    value: ${{ inputs.report-json }}
+  report-md:
+    description: Markdown report path.
+    value: ${{ inputs.report-md }}
+runs:
+  using: composite
+  steps:
+    - name: Validate TOML files
+      shell: bash
+      env:
+        TOML_GLOBS: ${{ inputs.toml-globs }}
+        REQUIRE_KNOWN_PACKAGE_SECTION: ${{ inputs.require-known-package-section }}
+        REPORT_JSON: ${{ inputs.report-json }}
+        REPORT_MD: ${{ inputs.report-md }}
+      run: |
+        set -euo pipefail
+        python - <<'PY'
+        from __future__ import annotations
+
+        import glob
+        import json
+        import os
+        import tomllib
+        from pathlib import Path
+
+        skip_parts = {".git", "node_modules", ".venv", "venv", "dist", "build", "__pycache__"}
+
+        def truth(name: str) -> bool:
+            return os.environ.get(name, "false").lower() == "true"
+
+        def files() -> list[Path]:
+            seen: set[Path] = set()
+            out: list[Path] = []
+            for pattern in [line.strip() for line in os.environ["TOML_GLOBS"].splitlines() if line.strip()]:
+                for raw in glob.glob(pattern, recursive=True):
+                    path = Path(raw)
+                    if path.is_file() and path not in seen and not any(part in skip_parts for part in path.parts):
+                        seen.add(path)
+                        out.append(path)
+            return sorted(out, key=lambda p: p.as_posix())
+
+        records = []
+        failures = []
+        for path in files():
+            issues: list[str] = []
+            try:
+                data = tomllib.loads(path.read_text(encoding="utf-8"))
+            except Exception as exc:
+                data = {}
+                issues.append(f"parse error: {exc}")
+            if truth("REQUIRE_KNOWN_PACKAGE_SECTION"):
+                if path.name == "pyproject.toml" and "project" not in data and not data.get("tool", {}).get("poetry"):
+                    issues.append("missing [project] or [tool.poetry]")
+                if path.name == "Cargo.toml" and "package" not in data and "workspace" not in data:
+                    issues.append("missing [package] or [workspace]")
+            record = {"path": path.as_posix(), "issues": issues}
+            records.append(record)
+            if issues:
+                failures.append(record)
+
+        report = {"records": records, "failures": failures}
+        json_path = Path(os.environ["REPORT_JSON"])
+        md_path = Path(os.environ["REPORT_MD"])
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        md_path.parent.mkdir(parents=True, exist_ok=True)
+        json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        lines = ["# TOML Validate", "", f"- Files: {len(records)}", f"- Failures: {len(failures)}", "", "| Path | Issues |", "| --- | --- |"]
+        for record in records:
+            lines.append(f"| `{record['path']}` | {', '.join(record['issues']) or 'none'} |")
+        md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        if failures:
+            raise SystemExit(f"TOML validation failed with {len(failures)} failure(s). See {json_path}.")
+        PY

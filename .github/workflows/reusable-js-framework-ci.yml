@@ -1,0 +1,76 @@
+name: Reusable JavaScript Framework CI
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      framework:
+        type: string
+        required: false
+        default: generic
+      node-version:
+        type: string
+        required: false
+        default: "20"
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      install-command:
+        type: string
+        required: false
+        default: npm ci
+      lint-command:
+        type: string
+        required: false
+        default: ""
+      typecheck-command:
+        type: string
+        required: false
+        default: ""
+      test-command:
+        type: string
+        required: false
+        default: ""
+      build-command:
+        type: string
+        required: false
+        default: ""
+      artifact-path:
+        type: string
+        required: false
+        default: ""
+      artifact-name:
+        type: string
+        required: false
+        default: framework-build
+
+permissions:
+  contents: read
+
+jobs:
+  js-framework-ci:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/js-framework-ci@main
+        with:
+          framework: ${{ inputs.framework }}
+          node-version: ${{ inputs.node-version }}
+          working-directory: ${{ inputs.working-directory }}
+          install-command: ${{ inputs.install-command }}
+          lint-command: ${{ inputs.lint-command }}
+          typecheck-command: ${{ inputs.typecheck-command }}
+          test-command: ${{ inputs.test-command }}
+          build-command: ${{ inputs.build-command }}
+
+      - name: Upload artifact
+        if: ${{ inputs.artifact-path != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.artifact-path }}

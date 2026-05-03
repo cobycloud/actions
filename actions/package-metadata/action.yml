@@ -1,0 +1,172 @@
+name: Package Metadata
+description: Validate package names, versions, descriptions, URLs, readme/license references, and package manifest parseability.
+inputs:
+  manifest-globs:
+    description: Newline-delimited manifest glob patterns.
+    required: false
+    default: |
+      package.json
+      **/package.json
+      pyproject.toml
+      **/pyproject.toml
+      Cargo.toml
+      **/Cargo.toml
+  require-description:
+    description: Require non-empty package descriptions.
+    required: false
+    default: "true"
+  require-license:
+    description: Require license metadata.
+    required: false
+    default: "true"
+  require-readme:
+    description: Require readme metadata or nearby README file.
+    required: false
+    default: "true"
+  require-url:
+    description: Require homepage/repository/project URLs.
+    required: false
+    default: "false"
+  report-json:
+    description: JSON report output path.
+    required: false
+    default: reports/package-metadata.json
+  report-md:
+    description: Markdown report output path.
+    required: false
+    default: reports/package-metadata.md
+outputs:
+  report-json:
+    description: JSON report path.
+    value: ${{ inputs.report-json }}
+  report-md:
+    description: Markdown report path.
+    value: ${{ inputs.report-md }}
+runs:
+  using: composite
+  steps:
+    - name: Validate package metadata
+      shell: bash
+      env:
+        MANIFEST_GLOBS: ${{ inputs.manifest-globs }}
+        REQUIRE_DESCRIPTION: ${{ inputs.require-description }}
+        REQUIRE_LICENSE: ${{ inputs.require-license }}
+        REQUIRE_README: ${{ inputs.require-readme }}
+        REQUIRE_URL: ${{ inputs.require-url }}
+        REPORT_JSON: ${{ inputs.report-json }}
+        REPORT_MD: ${{ inputs.report-md }}
+      run: |
+        set -euo pipefail
+        python - <<'PY'
+        from __future__ import annotations
+
+        import glob
+        import json
+        import os
+        import re
+        import tomllib
+        from pathlib import Path
+
+        skip_parts = {".git", "node_modules", ".venv", "venv", "dist", "build", "__pycache__"}
+        semver = re.compile(r"^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$")
+
+        def truth(name: str) -> bool:
+            return os.environ.get(name, "false").lower() == "true"
+
+        def patterns() -> list[str]:
+            return [line.strip() for line in os.environ["MANIFEST_GLOBS"].splitlines() if line.strip()]
+
+        def manifests() -> list[Path]:
+            seen: set[Path] = set()
+            out: list[Path] = []
+            for pattern in patterns():
+                for raw in glob.glob(pattern, recursive=True):
+                    path = Path(raw)
+                    if path.is_file() and path not in seen and not any(part in skip_parts for part in path.parts):
+                        seen.add(path)
+                        out.append(path)
+            return sorted(out, key=lambda p: p.as_posix())
+
+        def nearby_readme(path: Path) -> bool:
+            return any((path.parent / name).exists() for name in ("README.md", "README.rst", "README.txt", "README"))
+
+        def normalize(path: Path) -> dict:
+            if path.name == "package.json":
+                data = json.loads(path.read_text(encoding="utf-8"))
+                return {
+                    "kind": "node",
+                    "name": data.get("name", ""),
+                    "version": data.get("version", ""),
+                    "description": data.get("description", ""),
+                    "license": data.get("license", ""),
+                    "readme": data.get("readme") or nearby_readme(path),
+                    "url": data.get("homepage") or data.get("repository") or data.get("bugs"),
+                }
+            data = tomllib.loads(path.read_text(encoding="utf-8"))
+            if path.name == "pyproject.toml":
+                project = data.get("project", {})
+                poetry = data.get("tool", {}).get("poetry", {})
+                license_value = project.get("license") or poetry.get("license") or ""
+                if isinstance(license_value, dict):
+                    license_value = license_value.get("text") or license_value.get("file") or ""
+                return {
+                    "kind": "python",
+                    "name": project.get("name") or poetry.get("name") or "",
+                    "version": project.get("version") or poetry.get("version") or "",
+                    "description": project.get("description") or poetry.get("description") or "",
+                    "license": license_value,
+                    "readme": project.get("readme") or poetry.get("readme") or nearby_readme(path),
+                    "url": project.get("urls") or poetry.get("homepage") or poetry.get("repository"),
+                }
+            package = data.get("package", {})
+            return {
+                "kind": "rust",
+                "name": package.get("name", ""),
+                "version": package.get("version", ""),
+                "description": package.get("description", ""),
+                "license": package.get("license") or package.get("license-file") or "",
+                "readme": package.get("readme") or nearby_readme(path),
+                "url": package.get("homepage") or package.get("repository") or package.get("documentation"),
+            }
+
+        records = []
+        failures = []
+        for path in manifests():
+            issues: list[str] = []
+            try:
+                meta = normalize(path)
+            except Exception as exc:
+                meta = {"kind": path.name, "name": "", "version": "", "description": "", "license": "", "readme": "", "url": ""}
+                issues.append(f"parse error: {exc}")
+            if not meta["name"]:
+                issues.append("missing name")
+            if not meta["version"]:
+                issues.append("missing version")
+            elif not semver.match(str(meta["version"])):
+                issues.append("version is not semver-like")
+            if truth("REQUIRE_DESCRIPTION") and not meta["description"]:
+                issues.append("missing description")
+            if truth("REQUIRE_LICENSE") and not meta["license"]:
+                issues.append("missing license")
+            if truth("REQUIRE_README") and not meta["readme"]:
+                issues.append("missing readme")
+            if truth("REQUIRE_URL") and not meta["url"]:
+                issues.append("missing url")
+            record = {"path": path.as_posix(), **meta, "issues": issues}
+            records.append(record)
+            if issues:
+                failures.append(record)
+
+        report = {"records": records, "failures": failures}
+        json_path = Path(os.environ["REPORT_JSON"])
+        md_path = Path(os.environ["REPORT_MD"])
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        md_path.parent.mkdir(parents=True, exist_ok=True)
+        json_path.write_text(json.dumps(report, indent=2, default=str) + "\n", encoding="utf-8")
+        lines = ["# Package Metadata", "", f"- Manifests: {len(records)}", f"- Failures: {len(failures)}", "", "| Path | Name | Version | Issues |", "| --- | --- | --- | --- |"]
+        for record in records:
+            lines.append(f"| `{record['path']}` | `{record['name']}` | `{record['version']}` | {', '.join(record['issues']) or 'none'} |")
+        md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        if failures:
+            raise SystemExit(f"Package metadata validation failed with {len(failures)} failure(s). See {json_path}.")
+        PY

@@ -1,0 +1,86 @@
+name: Reusable Security Gate
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      run-license-scan:
+        type: boolean
+        required: false
+        default: true
+      run-package-metadata:
+        type: boolean
+        required: false
+        default: true
+      run-toml-validate:
+        type: boolean
+        required: false
+        default: true
+      run-dependency-review:
+        type: boolean
+        required: false
+        default: false
+      run-codeql:
+        type: boolean
+        required: false
+        default: false
+      codeql-languages:
+        type: string
+        required: false
+        default: ""
+      codeql-build-mode:
+        type: string
+        required: false
+        default: autobuild
+      dependency-fail-on-severity:
+        type: string
+        required: false
+        default: high
+      allowed-licenses:
+        type: string
+        required: false
+        default: ""
+      dependency-allow-licenses:
+        type: string
+        required: false
+        default: ""
+      dependency-deny-licenses:
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  pull-requests: read
+  security-events: write
+  actions: read
+
+jobs:
+  security-gate:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/security-gate@main
+        with:
+          run-license-scan: ${{ inputs.run-license-scan }}
+          run-package-metadata: ${{ inputs.run-package-metadata }}
+          run-toml-validate: ${{ inputs.run-toml-validate }}
+          run-dependency-review: ${{ inputs.run-dependency-review }}
+          run-codeql: ${{ inputs.run-codeql }}
+          codeql-languages: ${{ inputs.codeql-languages }}
+          codeql-build-mode: ${{ inputs.codeql-build-mode }}
+          dependency-fail-on-severity: ${{ inputs.dependency-fail-on-severity }}
+          allowed-licenses: ${{ inputs.allowed-licenses }}
+          dependency-allow-licenses: ${{ inputs.dependency-allow-licenses }}
+          dependency-deny-licenses: ${{ inputs.dependency-deny-licenses }}
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: security-gate-reports
+          path: reports/*
+          if-no-files-found: ignore

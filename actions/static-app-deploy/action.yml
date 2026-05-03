@@ -1,0 +1,53 @@
+name: Static App Deploy
+description: Deploy a static app with caller-owned provider commands.
+inputs:
+  working-directory:
+    description: Static app project directory.
+    required: false
+    default: "."
+  setup-command:
+    description: Optional setup command.
+    required: false
+    default: ""
+  build-command:
+    description: Optional build command before deploy.
+    required: false
+    default: ""
+  deploy-command:
+    description: Provider-specific deploy command.
+    required: true
+  artifact-path:
+    description: Optional deployment artifact path to upload.
+    required: false
+    default: ""
+  artifact-name:
+    description: Uploaded artifact name.
+    required: false
+    default: static-app-artifact
+runs:
+  using: composite
+  steps:
+    - name: Setup static app deploy
+      if: ${{ inputs.setup-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.setup-command }}
+
+    - name: Build static app
+      if: ${{ inputs.build-command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.build-command }}
+
+    - name: Deploy static app
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.deploy-command }}
+
+    - name: Upload static app artifact
+      if: ${{ inputs.artifact-path != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.working-directory }}/${{ inputs.artifact-path }}
+        if-no-files-found: warn

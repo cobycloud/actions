@@ -1,0 +1,51 @@
+name: Reusable Create PR
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      paths:
+        type: string
+        required: false
+        default: "."
+      commit-message:
+        type: string
+        required: false
+        default: Update generated outputs
+      branch:
+        type: string
+        required: false
+        default: generated-updates
+      title:
+        type: string
+        required: false
+        default: Update generated outputs
+      body:
+        type: string
+        required: false
+        default: Automated generated output update.
+    secrets:
+      GH_TOKEN:
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-pr:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/create-pr@main
+        with:
+          paths: ${{ inputs.paths }}
+          commit-message: ${{ inputs.commit-message }}
+          branch: ${{ inputs.branch }}
+          title: ${{ inputs.title }}
+          body: ${{ inputs.body }}
+          token: ${{ secrets.GH_TOKEN }}

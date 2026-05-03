@@ -1,0 +1,28 @@
+name: Artifact Attestation
+description: Generate build provenance attestations for artifact paths.
+inputs:
+  subject-path:
+    description: Path or glob of artifacts to attest.
+    required: true
+  subject-name:
+    description: Optional subject name for attestation.
+    required: false
+    default: ""
+  push-to-registry:
+    description: Push attestations to registry when supported.
+    required: false
+    default: "false"
+  show-summary:
+    description: Show attestation summary in the GitHub Actions summary.
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Attest artifact provenance
+      uses: actions/attest-build-provenance@v2
+      with:
+        subject-path: ${{ inputs.subject-path }}
+        subject-name: ${{ inputs.subject-name }}
+        push-to-registry: ${{ inputs.push-to-registry }}
+        show-summary: ${{ inputs.show-summary }}

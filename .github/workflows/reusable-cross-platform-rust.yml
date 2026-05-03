@@ -1,0 +1,70 @@
+name: Reusable Cross Platform Rust
+
+on:
+  workflow_call:
+    inputs:
+      rust-toolchains:
+        type: string
+        required: false
+        default: '["stable"]'
+      runners:
+        type: string
+        required: false
+        default: '["ubuntu-latest","windows-latest","macos-latest"]'
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      components:
+        type: string
+        required: false
+        default: rustfmt,clippy
+      targets:
+        type: string
+        required: false
+        default: ""
+      fmt-command:
+        type: string
+        required: false
+        default: cargo fmt --all -- --check
+      clippy-command:
+        type: string
+        required: false
+        default: cargo clippy --all-targets --all-features -- -D warnings
+      test-command:
+        type: string
+        required: false
+        default: cargo test --all-features
+      build-command:
+        type: string
+        required: false
+        default: cargo build --all-features
+      fail-fast:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  cross-platform-rust:
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        runner: ${{ fromJSON(inputs.runners) }}
+        rust-toolchain: ${{ fromJSON(inputs.rust-toolchains) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/rust-cargo-ci@main
+        with:
+          rust-toolchain: ${{ matrix.rust-toolchain }}
+          working-directory: ${{ inputs.working-directory }}
+          components: ${{ inputs.components }}
+          targets: ${{ inputs.targets }}
+          fmt-command: ${{ inputs.fmt-command }}
+          clippy-command: ${{ inputs.clippy-command }}
+          test-command: ${{ inputs.test-command }}
+          build-command: ${{ inputs.build-command }}

@@ -1,0 +1,65 @@
+name: Reusable SSOT Release Certify
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      environment:
+        type: string
+        required: false
+        default: ""
+      working-directory:
+        type: string
+        required: false
+        default: "."
+      registry-path:
+        type: string
+        required: false
+        default: .ssot/registry.json
+      release-id:
+        type: string
+        required: true
+      ssot-command:
+        type: string
+        required: false
+        default: uv run ssot
+      operation:
+        type: string
+        required: false
+        default: certify
+      release-command:
+        type: string
+        required: false
+        default: ""
+      evidence-path:
+        type: string
+        required: false
+        default: ""
+      fail-closed:
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  ssot-release-certify:
+    runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cobycloud/actions/actions/ssot-release-certify@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          registry-path: ${{ inputs.registry-path }}
+          release-id: ${{ inputs.release-id }}
+          ssot-command: ${{ inputs.ssot-command }}
+          operation: ${{ inputs.operation }}
+          release-command: ${{ inputs.release-command }}
+          evidence-path: ${{ inputs.evidence-path }}
+          fail-closed: ${{ inputs.fail-closed }}

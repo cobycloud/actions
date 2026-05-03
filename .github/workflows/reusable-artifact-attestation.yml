@@ -1,0 +1,42 @@
+name: Reusable Artifact Attestation
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      subject-path:
+        type: string
+        required: true
+      subject-name:
+        type: string
+        required: false
+        default: ""
+      push-to-registry:
+        type: boolean
+        required: false
+        default: false
+      show-summary:
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  artifact-attestation:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/artifact-attestation@main
+        with:
+          subject-path: ${{ inputs.subject-path }}
+          subject-name: ${{ inputs.subject-name }}
+          push-to-registry: ${{ inputs.push-to-registry }}
+          show-summary: ${{ inputs.show-summary }}

@@ -1,0 +1,57 @@
+name: Reusable Package Metadata
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      manifest-globs:
+        type: string
+        required: false
+        default: |
+          package.json
+          **/package.json
+          pyproject.toml
+          **/pyproject.toml
+          Cargo.toml
+          **/Cargo.toml
+      require-description:
+        type: boolean
+        required: false
+        default: true
+      require-license:
+        type: boolean
+        required: false
+        default: true
+      require-readme:
+        type: boolean
+        required: false
+        default: true
+      require-url:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  package-metadata:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cobycloud/actions/actions/package-metadata@main
+        with:
+          manifest-globs: ${{ inputs.manifest-globs }}
+          require-description: ${{ inputs.require-description }}
+          require-license: ${{ inputs.require-license }}
+          require-readme: ${{ inputs.require-readme }}
+          require-url: ${{ inputs.require-url }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-metadata
+          path: reports/package-metadata.*

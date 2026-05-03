@@ -1,0 +1,23 @@
+name: Snap Publish
+description: Publish Snap packages to Snapcraft.
+inputs:
+  snap-file:
+    description: Snap file to publish.
+    required: true
+  release:
+    description: Snapcraft channel or channels.
+    required: false
+    default: stable
+  store-login:
+    description: Snapcraft store login token.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Publish Snap
+      uses: snapcore/action-publish@v1
+      env:
+        SNAPCRAFT_STORE_CREDENTIALS: ${{ inputs.store-login }}
+      with:
+        snap: ${{ inputs.snap-file }}
+        release: ${{ inputs.release }}
