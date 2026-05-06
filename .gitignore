@@ -1,0 +1,6 @@
+/reports
+/scripts
+/.github/workflows/*
+!/.github/
+!/.github/workflows/
+!/.github/workflows/reusable-*.yml
