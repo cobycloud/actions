@@ -1,14 +1,14 @@
 # Reusable GitHub Actions
 
-This repository turns repeated workflow patterns from the Swarmauri workspace into externally callable GitHub Actions and reusable workflows.
+This repository provides reusable GitHub Actions and reusable workflows for common CI, release, package publication, deployment, monorepo, and verification tasks.
 
 ## Table of Contents
 
 - [Action Catalog](#action-catalog)
 - [Reusable Workflow Catalog](#reusable-workflow-catalog)
+- [License](#license)
 - [Component Analysis](#component-analysis)
 - [Missing Workflow Families](#missing-workflow-families)
-- [Source Analysis](#source-analysis)
 
 ## Documentation
 
@@ -277,6 +277,10 @@ jobs:
       run-command: uv run pytest
 ```
 
+## License
+
+Licensed under the Apache License, Version 2.0. See [`LICENSE`](LICENSE).
+
 ## Component Analysis
 
 Start with [`docs/reusable-component-map.md`](docs/reusable-component-map.md) for the action-level design and deferred extraction candidates.
@@ -284,14 +288,3 @@ Start with [`docs/reusable-component-map.md`](docs/reusable-component-map.md) fo
 ## Missing Workflow Families
 
 The reusable set now covers the first package publication lane, release preparation/version bumping, baseline license/notice/readme/metadata validation, CodeQL, dependency review, aggregate security gates, provenance attestation, cosign signing, attestation/signature verification, Rust/Cargo CI, Node/Python/Rust version fan-out, JavaScript framework CI, Playwright/e2e, tox CI, OS fan-out, platform artifact builds, Android artifacts, Electron/Tauri installers, Debian/Snap builds, apt/rpm/snap/brew publication, Terraform, Proxmox, docs build, Pages deploy, static app deployment, uv/pnpm monorepo CI, monorepo matrix discovery, artifact joining, ordered package release trains, changed-file detection, generated commits, PR creation, docs sync, workflow dispatch batches, and SSOT validation/evidence/certification/release gates. See [`docs/missing-reusable-workflow-families.md`](docs/missing-reusable-workflow-families.md).
-
-## Source Analysis
-
-The first reusable set is grounded in the generated inventory under `reports/`:
-
-- [`reports/workflow-inventory.md`](reports/workflow-inventory.md)
-- [`reports/final-workflow-component-analysis.md`](reports/final-workflow-component-analysis.md)
-- [`reports/workflows/`](reports/workflows/)
-- [`reports/scripts/`](reports/scripts/)
-
-The copied historical workflows remain under `.github/workflows/*__<hash>.yml` for reference. New reusable workflows use the `reusable-*.yml` naming convention.
