@@ -17,15 +17,15 @@ on:
       install-command:
         type: string
         required: false
-        default: uv sync --all-groups --frozen
+        default: uv sync --no-cache --all-groups --frozen
       compile-command:
         type: string
         required: false
-        default: uv run python -m compileall .
+        default: uv run --no-cache python -m compileall .
       test-command:
         type: string
         required: false
-        default: uv run pytest
+        default: uv run --no-cache pytest
       docs-command:
         type: string
         required: false

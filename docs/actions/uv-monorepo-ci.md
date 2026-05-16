@@ -6,7 +6,7 @@
 
 - Set up Python and uv.
 - Compute monorepo `PYTHONPATH`.
-- Run install, compile, test, docs, and build commands for a package path.
+- Run install, compile, test, docs, and build commands for a package path with uv cache disabled by default.
 
 ## Reusable Workflow
 

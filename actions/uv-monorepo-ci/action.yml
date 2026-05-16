@@ -12,15 +12,15 @@ inputs:
   install-command:
     description: uv install command.
     required: false
-    default: uv sync --all-groups --frozen
+    default: uv sync --no-cache --all-groups --frozen
   compile-command:
     description: Compile command. Leave empty to skip.
     required: false
-    default: uv run python -m compileall .
+    default: uv run --no-cache python -m compileall .
   test-command:
     description: Test command. Leave empty to skip.
     required: false
-    default: uv run pytest
+    default: uv run --no-cache pytest
   docs-command:
     description: Docs command. Leave empty to skip.
     required: false
@@ -42,3 +42,4 @@ runs:
         docs-command: ${{ inputs.docs-command }}
         build-command: ${{ inputs.build-command }}
         compute-monorepo-pythonpath: true
+        uv-cache: false
