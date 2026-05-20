@@ -25,6 +25,7 @@ This repository provides reusable GitHub Actions and reusable workflows for comm
 | [`docs/actions/tox-ci.md`](docs/actions/tox-ci.md) | Set up Python, install tox, and run tox environments. |
 | [`docs/actions/python-package-ci.md`](docs/actions/python-package-ci.md) | Run Python package compile, test, docs, build, and artifact checks across package cells. |
 | [`docs/actions/python-package-build.md`](docs/actions/python-package-build.md) | Build Python package distributions with `uv build` and upload artifacts. |
+| [`docs/actions/python-isolated-package-test.md`](docs/actions/python-isolated-package-test.md) | Test a built Python wheel in an isolated venv with optional workspace source siblings. |
 | [`docs/actions/rust-cargo-ci.md`](docs/actions/rust-cargo-ci.md) | Set up Rust and run Cargo fmt, clippy, test, build, and docs checks. |
 | [`docs/actions/os-matrix-cell.md`](docs/actions/os-matrix-cell.md) | Run one Node, Python, Rust, or generic validation cell on the current runner OS. |
 | [`docs/actions/cross-platform-command.md`](docs/actions/cross-platform-command.md) | Run default commands with Linux, macOS, and Windows overrides. |
@@ -101,6 +102,7 @@ Use composite actions when a repository already owns its workflow shape and only
 | [`./actions/tox-ci`](actions/tox-ci/action.yml) | [`docs/actions/tox-ci.md`](docs/actions/tox-ci.md) | Set up Python, install tox, and run tox environments. |
 | [`./actions/python-package-ci`](actions/python-package-ci/action.yml) | [`docs/actions/python-package-ci.md`](docs/actions/python-package-ci.md) | Run Python package compile, test, docs, build, and artifact checks across package cells. |
 | [`./actions/python-package-build`](actions/python-package-build/action.yml) | [`docs/actions/python-package-build.md`](docs/actions/python-package-build.md) | Build Python packages with `uv build` and optionally upload distribution artifacts. |
+| [`./actions/python-isolated-package-test`](actions/python-isolated-package-test/action.yml) | [`docs/actions/python-isolated-package-test.md`](docs/actions/python-isolated-package-test.md) | Test a built Python wheel in an isolated venv with optional workspace source siblings. |
 | [`./actions/rust-cargo-ci`](actions/rust-cargo-ci/action.yml) | [`docs/actions/rust-cargo-ci.md`](docs/actions/rust-cargo-ci.md) | Set up Rust and run Cargo fmt, clippy, test, build, and docs checks. |
 | [`./actions/os-matrix-cell`](actions/os-matrix-cell/action.yml) | [`docs/actions/os-matrix-cell.md`](docs/actions/os-matrix-cell.md) | Run one Node, Python, Rust, or generic validation cell on the current runner OS. |
 | [`./actions/cross-platform-command`](actions/cross-platform-command/action.yml) | [`docs/actions/cross-platform-command.md`](docs/actions/cross-platform-command.md) | Run default commands with Linux, macOS, and Windows overrides. |

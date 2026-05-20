@@ -1,0 +1,169 @@
+name: Python Isolated Package Test
+description: Test a built Python wheel in an isolated venv with optional workspace source siblings and package-specific tests.
+inputs:
+  python-version:
+    description: Python version expected in the current job.
+    required: false
+    default: "3.12"
+  package-name:
+    description: Python distribution name under test.
+    required: true
+  package-version:
+    description: Expected installed distribution version.
+    required: true
+  import-root:
+    description: Import root to smoke import after wheel installation.
+    required: true
+  wheel-dir:
+    description: Directory containing the built wheel for package-name.
+    required: true
+  workspace-source-globs:
+    description: Newline-separated source globs to expose through a .pth file.
+    required: false
+    default: |
+      pkgs/*/src
+  package-test-paths:
+    description: Newline-separated pytest paths for package-specific tests. Missing paths are ignored.
+    required: false
+    default: ""
+  work-dir:
+    description: Directory used for the temporary isolated virtual environment.
+    required: false
+    default: .tmp/python-isolated-package-test
+  install-pytest:
+    description: Install pytest before running package-test-paths.
+    required: false
+    default: "true"
+  pip-check:
+    description: Run pip check after installing the wheel.
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Run isolated package test
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        python - <<'PY'
+        import glob
+        import json
+        import os
+        import shutil
+        import subprocess
+        import sys
+        import textwrap
+        from pathlib import Path
+
+        expected_python = "${{ inputs.python-version }}"
+        package_name = "${{ inputs.package-name }}"
+        package_version = "${{ inputs.package-version }}"
+        import_root = "${{ inputs.import-root }}"
+        wheel_dir = Path("${{ inputs.wheel-dir }}").resolve()
+        work_dir = Path("${{ inputs.work-dir }}").resolve()
+        pip_check = "${{ inputs.pip-check }}".lower() == "true"
+        install_pytest = "${{ inputs.install-pytest }}".lower() == "true"
+
+        actual_python = f"{sys.version_info.major}.{sys.version_info.minor}"
+        if actual_python != expected_python:
+            raise SystemExit(f"expected Python {expected_python}, running {actual_python}")
+
+        wheels = sorted(wheel_dir.glob("*.whl"))
+        if not wheels:
+            raise SystemExit(f"no wheel found in {wheel_dir}")
+        normalized = package_name.replace("-", "_")
+        matching = [item for item in wheels if item.name.startswith(f"{normalized}-{package_version}-")]
+        wheel = matching[0] if matching else wheels[0]
+
+        venv = work_dir / package_name / f"py{expected_python.replace('.', '')}" / ".venv"
+        if venv.exists():
+            shutil.rmtree(venv)
+        venv.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True)
+        if os.name == "nt":
+            venv_python = venv / "Scripts" / "python.exe"
+        else:
+            venv_python = venv / "bin" / "python"
+
+        site_packages = subprocess.check_output(
+            [str(venv_python), "-c", "import site; print(site.getsitepackages()[0])"],
+            text=True,
+        ).strip()
+        site_path = Path(site_packages)
+        site_path.mkdir(parents=True, exist_ok=True)
+
+        source_paths: list[str] = []
+        for raw_pattern in """${{ inputs.workspace-source-globs }}""".splitlines():
+            pattern = raw_pattern.strip()
+            if not pattern:
+                continue
+            for match in glob.glob(pattern):
+                path = Path(match).resolve()
+                if path.exists() and str(path) not in source_paths:
+                    source_paths.append(str(path))
+        (site_path / "workspace_sources.pth").write_text("\n".join(source_paths) + "\n", encoding="utf-8")
+
+        subprocess.run([str(venv_python), "-m", "pip", "install", "--no-deps", str(wheel)], check=True)
+        if pip_check:
+            subprocess.run([str(venv_python), "-m", "pip", "check"], check=True)
+
+        smoke = textwrap.dedent("""
+        import importlib
+        import importlib.metadata
+        import json
+        import sys
+
+        package_name = sys.argv[1]
+        import_root = sys.argv[2]
+        expected_version = sys.argv[3]
+        module = importlib.import_module(import_root)
+        installed_version = importlib.metadata.version(package_name)
+        assert module.__name__ == import_root, module.__name__
+        assert installed_version == expected_version, installed_version
+        print(json.dumps({
+            "package": package_name,
+            "import_root": import_root,
+            "version": installed_version,
+        }))
+        """)
+        subprocess.run(
+            [str(venv_python), "-c", smoke, package_name, import_root, package_version],
+            check=True,
+        )
+
+        test_paths = []
+        for raw_path in """${{ inputs.package-test-paths }}""".splitlines():
+            value = raw_path.strip()
+            if not value:
+                continue
+            path = Path(value)
+            if path.exists():
+                test_paths.append(str(path))
+
+        if test_paths:
+            if install_pytest:
+                subprocess.run([str(venv_python), "-m", "pip", "install", "pytest"], check=True)
+            env = os.environ.copy()
+            env.update(
+                {
+                    "PACKAGE_UNDER_TEST": package_name,
+                    "IMPORT_ROOT_UNDER_TEST": import_root,
+                    "PACKAGE_VERSION_UNDER_TEST": package_version,
+                }
+            )
+            subprocess.run([str(venv_python), "-m", "pytest", *test_paths], check=True, env=env)
+
+        print(
+            json.dumps(
+                {
+                    "package": package_name,
+                    "python": expected_python,
+                    "wheel": str(wheel),
+                    "workspace_sources": source_paths,
+                    "test_paths": test_paths,
+                },
+                indent=2,
+            )
+        )
+        PY
