@@ -29,7 +29,7 @@ inputs:
     required: false
     default: "false"
   make-latest:
-    description: Latest release handling: true, false, or legacy.
+    description: "Latest release handling: true, false, or legacy."
     required: false
     default: legacy
   fail-on-unmatched-files:
