@@ -77,4 +77,13 @@ runs:
         if [[ "${{ inputs.allow-dirty }}" == "true" ]]; then
           args+=(--allow-dirty)
         fi
-        cargo publish "${args[@]}"
+        log="$(mktemp)"
+        if cargo publish "${args[@]}" 2>&1 | tee "$log"; then
+          exit 0
+        fi
+        status="${PIPESTATUS[0]}"
+        if grep -qi "already exists" "$log"; then
+          echo "crate version already exists; treating as published"
+          exit 0
+        fi
+        exit "$status"

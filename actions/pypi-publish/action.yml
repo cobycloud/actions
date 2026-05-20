@@ -29,11 +29,25 @@ runs:
   using: composite
   steps:
     - name: Publish distributions
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        packages-dir: ${{ inputs.packages-dir }}
-        repository-url: ${{ inputs.repository-url }}
-        password: ${{ inputs.password }}
-        skip-existing: ${{ inputs.skip-existing }}
-        verbose: ${{ inputs.verbose }}
-        print-hash: ${{ inputs.print-hash }}
+      shell: bash
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ inputs.password }}
+      run: |
+        set -euo pipefail
+        args=(upload "${{ inputs.packages-dir }}"/*)
+        if [[ -n "${{ inputs.repository-url }}" ]]; then
+          args+=(--repository-url "${{ inputs.repository-url }}")
+        fi
+        if [[ "${{ inputs.skip-existing }}" == "true" ]]; then
+          args+=(--skip-existing)
+        fi
+        if [[ "${{ inputs.verbose }}" == "true" ]]; then
+          args+=(--verbose)
+        fi
+        if command -v uvx >/dev/null 2>&1; then
+          uvx twine "${args[@]}"
+        else
+          python3 -m pip install --user twine
+          python3 -m twine "${args[@]}"
+        fi
