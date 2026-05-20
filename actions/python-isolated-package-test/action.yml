@@ -38,6 +38,10 @@ inputs:
     description: Run pip check after installing the wheel.
     required: false
     default: "true"
+  pre-test-command:
+    description: Optional command to run inside the isolated venv before package-test-paths.
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -64,6 +68,7 @@ runs:
         work_dir = Path("${{ inputs.work-dir }}").resolve()
         pip_check = "${{ inputs.pip-check }}".lower() == "true"
         install_pytest = "${{ inputs.install-pytest }}".lower() == "true"
+        pre_test_command = """${{ inputs.pre-test-command }}""".strip()
 
         actual_python = f"{sys.version_info.major}.{sys.version_info.minor}"
         if actual_python != expected_python:
@@ -142,8 +147,6 @@ runs:
                 test_paths.append(str(path))
 
         if test_paths:
-            if install_pytest:
-                subprocess.run([str(venv_python), "-m", "pip", "install", "pytest"], check=True)
             env = os.environ.copy()
             env.update(
                 {
@@ -152,6 +155,10 @@ runs:
                     "PACKAGE_VERSION_UNDER_TEST": package_version,
                 }
             )
+            if pre_test_command:
+                subprocess.run(pre_test_command, shell=True, check=True, env=env)
+            if install_pytest:
+                subprocess.run([str(venv_python), "-m", "pip", "install", "pytest"], check=True, env=env)
             subprocess.run([str(venv_python), "-m", "pytest", *test_paths], check=True, env=env)
 
         print(
