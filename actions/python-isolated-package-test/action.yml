@@ -47,6 +47,8 @@ runs:
   steps:
     - name: Run isolated package test
       shell: bash
+      env:
+        INPUT_PRE_TEST_COMMAND: ${{ inputs.pre-test-command }}
       run: |
         set -euo pipefail
 
@@ -68,7 +70,7 @@ runs:
         work_dir = Path("${{ inputs.work-dir }}").resolve()
         pip_check = "${{ inputs.pip-check }}".lower() == "true"
         install_pytest = "${{ inputs.install-pytest }}".lower() == "true"
-        pre_test_command = """${{ inputs.pre-test-command }}""".strip()
+        pre_test_command = os.environ.get("INPUT_PRE_TEST_COMMAND", "").strip()
 
         actual_python = f"{sys.version_info.major}.{sys.version_info.minor}"
         if actual_python != expected_python:
