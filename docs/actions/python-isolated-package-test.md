@@ -22,7 +22,8 @@ Tests one built Python wheel in an isolated virtual environment while optionally
 7. Imports `import-root` and checks installed distribution metadata version.
 8. Optionally runs `pre-test-command` with `VENV_PYTHON` and `VENV_BIN`
    available in the environment.
-9. Runs package-specific pytest paths when those paths exist.
+9. Runs package-specific pytest paths when those paths exist, with optional
+   `pytest-args` inserted before the paths.
 
 ## Inputs
 
@@ -39,6 +40,7 @@ Tests one built Python wheel in an isolated virtual environment while optionally
 | `install-pytest` | `true` | Install pytest before running package test paths. |
 | `pip-check` | `true` | Run `pip check` after wheel install. |
 | `pre-test-command` | empty | Optional command to run before package test paths. |
+| `pytest-args` | empty | Newline-separated arguments passed to pytest before package test paths. |
 
 `pre-test-command` can use:
 
@@ -76,6 +78,9 @@ steps:
       package-test-paths: |
         tests/packages/example
         tests/packages/example_import_root
+      pytest-args: |
+        --certification-lane
+        all
 ```
 
 ## Dependencies

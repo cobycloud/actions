@@ -42,6 +42,10 @@ inputs:
     description: Optional command to run inside the isolated venv before package-test-paths.
     required: false
     default: ""
+  pytest-args:
+    description: Additional newline-separated arguments to pass to pytest before package-test-paths.
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -163,7 +167,12 @@ runs:
                 subprocess.run(pre_test_command, shell=True, check=True, env=env)
             if install_pytest:
                 subprocess.run([str(venv_python), "-m", "pip", "install", "pytest"], check=True, env=env)
-            subprocess.run([str(venv_python), "-m", "pytest", *test_paths], check=True, env=env)
+            pytest_args = [
+                value.strip()
+                for value in """${{ inputs.pytest-args }}""".splitlines()
+                if value.strip()
+            ]
+            subprocess.run([str(venv_python), "-m", "pytest", *pytest_args, *test_paths], check=True, env=env)
 
         print(
             json.dumps(
