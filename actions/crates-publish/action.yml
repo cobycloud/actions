@@ -40,6 +40,14 @@ inputs:
     description: Run cargo publish with --allow-dirty.
     required: false
     default: "false"
+  max-attempts:
+    description: Maximum publish attempts when crates.io rate limits a new crate.
+    required: false
+    default: "6"
+  retry-delay-seconds:
+    description: Delay between rate-limit retry attempts.
+    required: false
+    default: "600"
 runs:
   using: composite
   steps:
@@ -77,13 +85,24 @@ runs:
         if [[ "${{ inputs.allow-dirty }}" == "true" ]]; then
           args+=(--allow-dirty)
         fi
-        log="$(mktemp)"
-        if cargo publish "${args[@]}" 2>&1 | tee "$log"; then
-          exit 0
-        fi
-        status="${PIPESTATUS[0]}"
-        if grep -qi "already exists" "$log"; then
-          echo "crate version already exists; treating as published"
-          exit 0
-        fi
-        exit "$status"
+        max_attempts="${{ inputs.max-attempts }}"
+        retry_delay="${{ inputs.retry-delay-seconds }}"
+        attempt=1
+        while (( attempt <= max_attempts )); do
+          log="$(mktemp)"
+          if cargo publish "${args[@]}" 2>&1 | tee "$log"; then
+            exit 0
+          fi
+          status="${PIPESTATUS[0]}"
+          if grep -qi "already exists" "$log"; then
+            echo "crate version already exists; treating as published"
+            exit 0
+          fi
+          if grep -qi "Too Many Requests" "$log" && (( attempt < max_attempts )); then
+            echo "crates.io rate limit hit; retrying in ${retry_delay}s"
+            sleep "$retry_delay"
+            attempt=$((attempt + 1))
+            continue
+          fi
+          exit "$status"
+        done
