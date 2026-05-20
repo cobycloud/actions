@@ -20,7 +20,8 @@ Tests one built Python wheel in an isolated virtual environment while optionally
 5. Installs the target wheel with `--no-deps`.
 6. Optionally runs `pip check`.
 7. Imports `import-root` and checks installed distribution metadata version.
-8. Optionally runs `pre-test-command` inside the isolated venv.
+8. Optionally runs `pre-test-command` with `VENV_PYTHON` and `VENV_BIN`
+   available in the environment.
 9. Runs package-specific pytest paths when those paths exist.
 
 ## Inputs
@@ -38,6 +39,16 @@ Tests one built Python wheel in an isolated virtual environment while optionally
 | `install-pytest` | `true` | Install pytest before running package test paths. |
 | `pip-check` | `true` | Run `pip check` after wheel install. |
 | `pre-test-command` | empty | Optional command to run before package test paths. |
+
+`pre-test-command` can use:
+
+```text
+VENV_PYTHON
+VENV_BIN
+PACKAGE_UNDER_TEST
+IMPORT_ROOT_UNDER_TEST
+PACKAGE_VERSION_UNDER_TEST
+```
 
 ## Example
 

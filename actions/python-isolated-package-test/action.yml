@@ -153,6 +153,8 @@ runs:
                     "PACKAGE_UNDER_TEST": package_name,
                     "IMPORT_ROOT_UNDER_TEST": import_root,
                     "PACKAGE_VERSION_UNDER_TEST": package_version,
+                    "VENV_PYTHON": str(venv_python),
+                    "VENV_BIN": str(venv_python.parent),
                 }
             )
             if pre_test_command:
