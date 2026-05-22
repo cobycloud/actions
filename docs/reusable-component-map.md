@@ -195,11 +195,11 @@ This map converts the workflow inventory into reusable external surfaces. It int
 
 ### PyPI Publish
 
-- Action: `actions/pypi-publish`
+- Actions: `actions/pypi-publish`, `actions/pypi-token-publish`, `actions/pypi-trusted-publish`
 - Workflow: `.github/workflows/reusable-pypi-publish.yml`
-- Replaces repeated jobs that publish prebuilt Python distributions with `pypa/gh-action-pypi-publish`.
-- Main inputs: `packages-dir`, `repository-url`, `skip-existing`, `verbose`, `print-hash`.
-- Domain fit: Python package release lanes using trusted publishing or token fallback.
+- Replaces repeated jobs that publish prebuilt Python distributions with `uv publish`.
+- Main inputs: `packages-dir`, `repository-url`, `skip-existing`; token-only lanes also require `token`.
+- Domain fit: Python package release lanes that must choose API-token-only or Trusted-Publishing-only behavior explicitly.
 
 ### npm Publish
 

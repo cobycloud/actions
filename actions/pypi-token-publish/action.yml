@@ -1,0 +1,47 @@
+name: PyPI Token Publish
+description: Publish Python distributions to PyPI or TestPyPI using only a PyPI API token and uv publish.
+inputs:
+  packages-dir:
+    description: Directory containing distribution files.
+    required: false
+    default: dist
+  repository-url:
+    description: Optional repository URL, such as https://test.pypi.org/legacy/.
+    required: false
+    default: ""
+  token:
+    description: PyPI API token.
+    required: true
+  skip-existing:
+    description: Do not fail when a file already exists.
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Publish distributions with PyPI API token
+      shell: bash
+      env:
+        PYPI_API_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+        if [[ -z "${PYPI_API_TOKEN}" ]]; then
+          echo "token is required for pypi-token-publish." >&2
+          exit 1
+        fi
+        echo "::add-mask::${PYPI_API_TOKEN}"
+        python3 -m pip install --user --upgrade uv
+        export PATH="${HOME}/.local/bin:${PATH}"
+        args=(publish --username "__token__" --password "${PYPI_API_TOKEN}")
+        if [[ -n "${{ inputs.repository-url }}" ]]; then
+          args+=(--publish-url "${{ inputs.repository-url }}")
+        fi
+        if [[ "${{ inputs.skip-existing }}" == "true" ]]; then
+          if [[ "${{ inputs.repository-url }}" == *"test.pypi.org"* ]]; then
+            args+=(--check-url "https://test.pypi.org/simple/")
+          else
+            args+=(--check-url "https://pypi.org/simple/")
+          fi
+        fi
+        args+=("${{ inputs.packages-dir }}"/*)
+        uv "${args[@]}"

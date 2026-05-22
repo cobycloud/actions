@@ -10,7 +10,7 @@ Everything below is either still missing or has now been partially covered by th
 
 Implemented families:
 
-- `reusable-pypi-publish.yml`: publish built Python distributions to PyPI or TestPyPI with trusted publishing or token fallback.
+- `reusable-pypi-publish.yml`: publish built Python distributions to PyPI or TestPyPI, with explicit token-only and Trusted-Publishing-only composite actions available for caller workflows.
 - `reusable-npm-publish.yml`: publish Node packages to npmjs, including registry URL, access level, provenance, and tag/channel inputs.
 - `reusable-crates-publish.yml`: publish Rust crates to crates.io, with dry-run and ordered workspace publish support.
 - `reusable-github-release.yml`: create or update GitHub Releases, upload assets, attach checksums, and handle prerelease/draft flags.
@@ -25,7 +25,7 @@ Still missing:
 
 Evidence in report:
 
-- PyPI appears through `pypa/gh-action-pypi-publish`.
+- PyPI appears through repeated publication jobs, now covered by `uv publish` based CobyCloud actions.
 - npm publish appears through Node publish jobs and `changesets/action`.
 - crates.io appears through `cargo` and `dtolnay/rust-toolchain` release jobs.
 - GitHub Release appears through `softprops/action-gh-release`.

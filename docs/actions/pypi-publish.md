@@ -4,6 +4,11 @@ Composite action: `cobycloud/actions/actions/pypi-publish@main`
 
 Publishes prebuilt Python distributions to PyPI or TestPyPI using PyPI trusted publishing or an API token fallback.
 
+This is the compatibility action. Prefer the explicit actions for new workflows:
+
+- `cobycloud/actions/actions/pypi-token-publish@main` for API-token-only publishing.
+- `cobycloud/actions/actions/pypi-trusted-publish@main` for Trusted-Publishing-only publishing.
+
 ## Use When
 
 - A prior job has already built wheels and source distributions.
@@ -28,10 +33,23 @@ steps:
 
 ```yaml
 steps:
-  - uses: cobycloud/actions/actions/pypi-publish@main
+  - uses: cobycloud/actions/actions/pypi-token-publish@main
     with:
       packages-dir: dist
-      password: ${{ secrets.PYPI_API_TOKEN }}
+      token: ${{ secrets.PYPI_API_TOKEN }}
+```
+
+## Trusted Publishing Example
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+
+steps:
+  - uses: cobycloud/actions/actions/pypi-trusted-publish@main
+    with:
+      packages-dir: dist
 ```
 
 ## Inputs
@@ -49,6 +67,11 @@ steps:
 
 - `uv publish`
 - `id-token: write` for trusted publishing
+
+## Explicit Action Docs
+
+- [`pypi-token-publish.md`](pypi-token-publish.md)
+- [`pypi-trusted-publish.md`](pypi-trusted-publish.md)
 
 ## Related Reusable Workflow
 

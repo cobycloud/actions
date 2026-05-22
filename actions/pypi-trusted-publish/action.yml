@@ -1,0 +1,64 @@
+name: PyPI Trusted Publish
+description: Publish Python distributions to PyPI or TestPyPI using only PyPI Trusted Publishing and uv publish.
+inputs:
+  packages-dir:
+    description: Directory containing distribution files.
+    required: false
+    default: dist
+  repository-url:
+    description: Optional repository URL, such as https://test.pypi.org/legacy/.
+    required: false
+    default: ""
+  skip-existing:
+    description: Do not fail when a file already exists.
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Mint PyPI Trusted Publishing token
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]]; then
+          echo "Trusted Publishing requires id-token: write permissions." >&2
+          exit 1
+        fi
+        audience="pypi"
+        if [[ "${{ inputs.repository-url }}" == *"test.pypi.org"* ]]; then
+          audience="testpypi"
+        fi
+        oidc_resp="$(curl --fail-with-body -sS \
+          -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+          "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${audience}")"
+        oidc_token="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<< "${oidc_resp}")"
+        mint_url="https://pypi.org/_/oidc/mint-token"
+        if [[ "${{ inputs.repository-url }}" == *"test.pypi.org"* ]]; then
+          mint_url="https://test.pypi.org/_/oidc/mint-token"
+        fi
+        mint_resp="$(python3 -c 'import json,sys; print(json.dumps({"token": sys.argv[1]}))' "${oidc_token}" \
+          | curl --fail-with-body -sS -X POST "${mint_url}" \
+              -H "Content-Type: application/json" \
+              --data-binary @-)"
+        publish_token="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' <<< "${mint_resp}")"
+        echo "::add-mask::${publish_token}"
+        echo "PYPI_TRUSTED_PUBLISH_TOKEN=${publish_token}" >> "${GITHUB_ENV}"
+    - name: Publish distributions with Trusted Publishing
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 -m pip install --user --upgrade uv
+        export PATH="${HOME}/.local/bin:${PATH}"
+        args=(publish --username "__token__" --password "${PYPI_TRUSTED_PUBLISH_TOKEN}")
+        if [[ -n "${{ inputs.repository-url }}" ]]; then
+          args+=(--publish-url "${{ inputs.repository-url }}")
+        fi
+        if [[ "${{ inputs.skip-existing }}" == "true" ]]; then
+          if [[ "${{ inputs.repository-url }}" == *"test.pypi.org"* ]]; then
+            args+=(--check-url "https://test.pypi.org/simple/")
+          else
+            args+=(--check-url "https://pypi.org/simple/")
+          fi
+        fi
+        args+=("${{ inputs.packages-dir }}"/*)
+        uv "${args[@]}"

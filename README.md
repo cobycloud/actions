@@ -68,6 +68,8 @@ This repository provides reusable GitHub Actions and reusable workflows for comm
 | [`docs/actions/ssot-release-certify.md`](docs/actions/ssot-release-certify.md) | Certify, promote, or publish SSOT release entities. |
 | [`docs/actions/docker-compose-service.md`](docs/actions/docker-compose-service.md) | Restart, rebuild, or collect logs for one Docker Compose service. |
 | [`docs/actions/pypi-publish.md`](docs/actions/pypi-publish.md) | Publish Python distributions to PyPI or TestPyPI. |
+| [`docs/actions/pypi-token-publish.md`](docs/actions/pypi-token-publish.md) | Publish Python distributions with a PyPI API token only. |
+| [`docs/actions/pypi-trusted-publish.md`](docs/actions/pypi-trusted-publish.md) | Publish Python distributions with PyPI Trusted Publishing only. |
 | [`docs/actions/npm-publish.md`](docs/actions/npm-publish.md) | Publish Node packages to npmjs or another npm-compatible registry. |
 | [`docs/actions/crates-publish.md`](docs/actions/crates-publish.md) | Publish Rust crates with `cargo publish`. |
 | [`docs/actions/github-release.md`](docs/actions/github-release.md) | Create or update GitHub Releases and upload files. |
@@ -144,6 +146,8 @@ Use composite actions when a repository already owns its workflow shape and only
 | [`./actions/ssot-release-certify`](actions/ssot-release-certify/action.yml) | [`docs/actions/ssot-release-certify.md`](docs/actions/ssot-release-certify.md) | Certify, promote, or publish SSOT release entities. |
 | [`./actions/docker-compose-service`](actions/docker-compose-service/action.yml) | [`docs/actions/docker-compose-service.md`](docs/actions/docker-compose-service.md) | Restart, rebuild, or collect logs for one Docker Compose service. |
 | [`./actions/pypi-publish`](actions/pypi-publish/action.yml) | [`docs/actions/pypi-publish.md`](docs/actions/pypi-publish.md) | Publish Python distributions to PyPI or TestPyPI. |
+| [`./actions/pypi-token-publish`](actions/pypi-token-publish/action.yml) | [`docs/actions/pypi-token-publish.md`](docs/actions/pypi-token-publish.md) | Publish Python distributions with a PyPI API token only. |
+| [`./actions/pypi-trusted-publish`](actions/pypi-trusted-publish/action.yml) | [`docs/actions/pypi-trusted-publish.md`](docs/actions/pypi-trusted-publish.md) | Publish Python distributions with PyPI Trusted Publishing only. |
 | [`./actions/npm-publish`](actions/npm-publish/action.yml) | [`docs/actions/npm-publish.md`](docs/actions/npm-publish.md) | Publish Node packages to npmjs or another npm-compatible registry. |
 | [`./actions/crates-publish`](actions/crates-publish/action.yml) | [`docs/actions/crates-publish.md`](docs/actions/crates-publish.md) | Publish Rust crates with `cargo publish`. |
 | [`./actions/github-release`](actions/github-release/action.yml) | [`docs/actions/github-release.md`](docs/actions/github-release.md) | Create or update GitHub Releases and upload files. |
