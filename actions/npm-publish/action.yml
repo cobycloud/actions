@@ -9,6 +9,14 @@ inputs:
     description: Directory containing package.json.
     required: false
     default: "."
+  install-directory:
+    description: Directory where install, build, and test commands run. Defaults to package-directory.
+    required: false
+    default: ""
+  cache-dependency-path:
+    description: Dependency file path for setup-node cache. Defaults to <install-directory or package-directory>/package-lock.json.
+    required: false
+    default: ""
   registry-url:
     description: npm registry URL.
     required: false
@@ -51,6 +59,24 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Resolve npm publish paths
+      id: paths
+      shell: bash
+      run: |
+        set -euo pipefail
+        install_dir="${{ inputs.install-directory }}"
+        if [[ -z "$install_dir" ]]; then
+          install_dir="${{ inputs.package-directory }}"
+        fi
+        cache_path="${{ inputs.cache-dependency-path }}"
+        if [[ -z "$cache_path" ]]; then
+          cache_path="$install_dir/package-lock.json"
+        fi
+        {
+          echo "install-directory=$install_dir"
+          echo "cache-dependency-path=$cache_path"
+        } >> "$GITHUB_OUTPUT"
+
     - name: Setup Node
       uses: actions/setup-node@v4
       with:
@@ -58,24 +84,24 @@ runs:
         registry-url: ${{ inputs.registry-url }}
         scope: ${{ inputs.scope }}
         cache: npm
-        cache-dependency-path: ${{ inputs.package-directory }}/package-lock.json
+        cache-dependency-path: ${{ steps.paths.outputs.cache-dependency-path }}
 
     - name: Install dependencies
       if: ${{ inputs.install-command != '' }}
       shell: bash
-      working-directory: ${{ inputs.package-directory }}
+      working-directory: ${{ steps.paths.outputs.install-directory }}
       run: ${{ inputs.install-command }}
 
     - name: Build
       if: ${{ inputs.build-command != '' }}
       shell: bash
-      working-directory: ${{ inputs.package-directory }}
+      working-directory: ${{ steps.paths.outputs.install-directory }}
       run: ${{ inputs.build-command }}
 
     - name: Test
       if: ${{ inputs.test-command != '' }}
       shell: bash
-      working-directory: ${{ inputs.package-directory }}
+      working-directory: ${{ steps.paths.outputs.install-directory }}
       run: ${{ inputs.test-command }}
 
     - name: Publish package
