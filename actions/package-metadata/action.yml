@@ -68,7 +68,7 @@ runs:
         from pathlib import Path
 
         skip_parts = {".git", "node_modules", ".venv", "venv", "dist", "build", "__pycache__"}
-        semver = re.compile(r"^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$")
+        semver = re.compile(r"^\d+\.\d+\.\d+(?:\.dev\d+)?(?:[-+][A-Za-z0-9.-]+)?$")
 
         def truth(name: str) -> bool:
             return os.environ.get(name, "false").lower() == "true"
