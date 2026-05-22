@@ -73,6 +73,6 @@ runs:
         if command -v uvx >/dev/null 2>&1; then
           uvx twine "${args[@]}"
         else
-          python3 -m pip install --user twine
+          python3 -m pip install --user --upgrade "twine>=6.2.0" "pkginfo>=1.12.1.2"
           python3 -m twine "${args[@]}"
         fi
