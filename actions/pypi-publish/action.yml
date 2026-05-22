@@ -60,19 +60,18 @@ runs:
           echo "::add-mask::${TWINE_PASSWORD}"
           export TWINE_PASSWORD
         fi
-        args=(upload "${{ inputs.packages-dir }}"/*)
+        python3 -m pip install --user --upgrade uv
+        export PATH="${HOME}/.local/bin:${PATH}"
+        args=(publish --username "${TWINE_USERNAME}" --password "${TWINE_PASSWORD}")
         if [[ -n "${{ inputs.repository-url }}" ]]; then
-          args+=(--repository-url "${{ inputs.repository-url }}")
+          args+=(--publish-url "${{ inputs.repository-url }}")
         fi
         if [[ "${{ inputs.skip-existing }}" == "true" ]]; then
-          args+=(--skip-existing)
+          if [[ "${{ inputs.repository-url }}" == *"test.pypi.org"* ]]; then
+            args+=(--check-url "https://test.pypi.org/simple/")
+          else
+            args+=(--check-url "https://pypi.org/simple/")
+          fi
         fi
-        if [[ "${{ inputs.verbose }}" == "true" ]]; then
-          args+=(--verbose)
-        fi
-        if command -v uvx >/dev/null 2>&1; then
-          uvx twine "${args[@]}"
-        else
-          python3 -m pip install --user --upgrade "twine>=6.2.0" "pkginfo>=1.12.1.2"
-          python3 -m twine "${args[@]}"
-        fi
+        args+=("${{ inputs.packages-dir }}"/*)
+        uv "${args[@]}"
