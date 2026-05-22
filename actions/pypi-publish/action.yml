@@ -31,11 +31,11 @@ runs:
     - name: Publish distributions
       shell: bash
       env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ inputs.password }}
+        PYPI_API_TOKEN: ${{ inputs.password }}
       run: |
         set -euo pipefail
-        if [[ -z "${TWINE_PASSWORD}" ]]; then
+        publish_token="${PYPI_API_TOKEN}"
+        if [[ -z "${publish_token}" ]]; then
           if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]]; then
             echo "Trusted Publishing requires id-token: write permissions." >&2
             exit 1
@@ -56,13 +56,12 @@ runs:
             | curl --fail-with-body -sS -X POST "${mint_url}" \
                 -H "Content-Type: application/json" \
                 --data-binary @-)"
-          TWINE_PASSWORD="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' <<< "${mint_resp}")"
-          echo "::add-mask::${TWINE_PASSWORD}"
-          export TWINE_PASSWORD
+          publish_token="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' <<< "${mint_resp}")"
         fi
+        echo "::add-mask::${publish_token}"
         python3 -m pip install --user --upgrade uv
         export PATH="${HOME}/.local/bin:${PATH}"
-        args=(publish --username "${TWINE_USERNAME}" --password "${TWINE_PASSWORD}")
+        args=(publish --username "__token__" --password "${publish_token}")
         if [[ -n "${{ inputs.repository-url }}" ]]; then
           args+=(--publish-url "${{ inputs.repository-url }}")
         fi

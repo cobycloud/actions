@@ -47,7 +47,7 @@ steps:
 
 ## Dependencies
 
-- `pypa/gh-action-pypi-publish@release/v1`
+- `uv publish`
 - `id-token: write` for trusted publishing
 
 ## Related Reusable Workflow
