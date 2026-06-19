@@ -51,6 +51,10 @@ on:
         type: boolean
         required: false
         default: true
+      skip-existing:
+        type: boolean
+        required: false
+        default: false
       dry-run:
         type: boolean
         required: false
@@ -83,4 +87,5 @@ jobs:
           tag: ${{ inputs.tag }}
           access: ${{ inputs.access }}
           provenance: ${{ inputs.provenance }}
+          skip-existing: ${{ inputs.skip-existing }}
           dry-run: ${{ inputs.dry-run }}

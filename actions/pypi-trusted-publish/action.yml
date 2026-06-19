@@ -20,6 +20,23 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
+        dist_args=("${{ inputs.packages-dir }}"/*)
+        pending_file="${RUNNER_TEMP:-/tmp}/pypi-pending-${GITHUB_RUN_ID:-local}-${GITHUB_ACTION:-action}.txt"
+        if [[ "${{ inputs.skip-existing }}" == "true" ]]; then
+          python3 "${GITHUB_ACTION_PATH}/../_lib/pypi_preflight.py" \
+            --packages-dir "${{ inputs.packages-dir }}" \
+            --repository-url "${{ inputs.repository-url }}" \
+            --output "${pending_file}"
+          mapfile -t dist_args < "${pending_file}"
+          if [[ "${#dist_args[@]}" -eq 0 ]]; then
+            echo "::warning title=PyPI publish skipped::All distributions in ${{ inputs.packages-dir }} already exist; skipping publish."
+            echo "PYPI_SKIP_PUBLISH=true" >> "${GITHUB_ENV}"
+            exit 0
+          fi
+        else
+          printf '%s\n' "${dist_args[@]}" > "${pending_file}"
+        fi
+        echo "PYPI_PENDING_DISTS=${pending_file}" >> "${GITHUB_ENV}"
         if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]]; then
           echo "Trusted Publishing requires id-token: write permissions." >&2
           exit 1
@@ -44,6 +61,7 @@ runs:
         echo "::add-mask::${publish_token}"
         echo "PYPI_TRUSTED_PUBLISH_TOKEN=${publish_token}" >> "${GITHUB_ENV}"
     - name: Publish distributions with Trusted Publishing
+      if: ${{ env.PYPI_SKIP_PUBLISH != 'true' }}
       shell: bash
       run: |
         set -euo pipefail
@@ -60,5 +78,6 @@ runs:
             args+=(--check-url "https://pypi.org/simple/")
           fi
         fi
-        args+=("${{ inputs.packages-dir }}"/*)
+        mapfile -t dist_args < "${PYPI_PENDING_DISTS}"
+        args+=("${dist_args[@]}")
         uv "${args[@]}"

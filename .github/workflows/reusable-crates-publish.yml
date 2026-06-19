@@ -47,6 +47,10 @@ on:
         type: boolean
         required: false
         default: false
+      skip-existing:
+        type: boolean
+        required: false
+        default: false
     secrets:
       CRATES_API_TOKEN:
         required: false
@@ -73,3 +77,4 @@ jobs:
           no-default-features: ${{ inputs.no-default-features }}
           dry-run: ${{ inputs.dry-run }}
           allow-dirty: ${{ inputs.allow-dirty }}
+          skip-existing: ${{ inputs.skip-existing }}

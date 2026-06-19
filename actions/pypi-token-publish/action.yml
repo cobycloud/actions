@@ -25,6 +25,19 @@ runs:
         PYPI_API_TOKEN: ${{ inputs.api-token }}
       run: |
         set -euo pipefail
+        dist_args=("${{ inputs.packages-dir }}"/*)
+        if [[ "${{ inputs.skip-existing }}" == "true" ]]; then
+          pending_file="${RUNNER_TEMP:-/tmp}/pypi-pending-${GITHUB_RUN_ID:-local}-${GITHUB_ACTION:-action}.txt"
+          python3 "${GITHUB_ACTION_PATH}/../_lib/pypi_preflight.py" \
+            --packages-dir "${{ inputs.packages-dir }}" \
+            --repository-url "${{ inputs.repository-url }}" \
+            --output "${pending_file}"
+          mapfile -t dist_args < "${pending_file}"
+          if [[ "${#dist_args[@]}" -eq 0 ]]; then
+            echo "::warning title=PyPI publish skipped::All distributions in ${{ inputs.packages-dir }} already exist; skipping publish."
+            exit 0
+          fi
+        fi
         if [[ -z "${PYPI_API_TOKEN}" ]]; then
           echo "PYPI_API_TOKEN is required for pypi-token-publish." >&2
           exit 1
@@ -43,5 +56,5 @@ runs:
             args+=(--check-url "https://pypi.org/simple/")
           fi
         fi
-        args+=("${{ inputs.packages-dir }}"/*)
+        args+=("${dist_args[@]}")
         uv "${args[@]}"

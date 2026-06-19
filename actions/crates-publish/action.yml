@@ -45,6 +45,10 @@ inputs:
     description: Run cargo publish with --allow-dirty.
     required: false
     default: "false"
+  skip-existing:
+    description: Check crates.io before publishing and warn instead of failing when the crate version already exists.
+    required: false
+    default: "false"
   max-attempts:
     description: Maximum publish attempts when crates.io rate limits a new crate.
     required: false
@@ -77,6 +81,20 @@ runs:
             ;;
         esac
         publish_token="${CRATES_API_TOKEN}"
+        if [[ "${{ inputs.skip-existing }}" == "true" && "${{ inputs.dry-run }}" != "true" && -z "${{ inputs.registry }}" ]]; then
+          metadata="$(cargo metadata --no-deps --format-version 1)"
+          crate_name="$(python3 -c 'import json,sys; data=json.load(sys.stdin); package="${{ inputs.package }}"; matches=[p for p in data["packages"] if not package or p["name"] == package]; print(matches[0]["name"])' <<< "${metadata}")"
+          crate_version="$(python3 -c 'import json,sys; data=json.load(sys.stdin); package="${{ inputs.package }}"; matches=[p for p in data["packages"] if not package or p["name"] == package]; print(matches[0]["version"])' <<< "${metadata}")"
+          status="$(curl -sS -o /dev/null -w "%{http_code}" "https://crates.io/api/v1/crates/${crate_name}/${crate_version}")"
+          if [[ "${status}" == "200" ]]; then
+            echo "::warning title=crate version already published::${crate_name}@${crate_version} already exists on crates.io; skipping publish."
+            exit 0
+          fi
+          if [[ "${status}" != "404" ]]; then
+            echo "Failed to check crates.io for ${crate_name}@${crate_version}; HTTP ${status}." >&2
+            exit 1
+          fi
+        fi
         if [[ "${mode}" == "trusted" ]] || [[ "${mode}" == "auto" && -z "${publish_token}" ]]; then
           echo "crates.io does not support trusted publishing in this action; set CRATES_API_TOKEN and use publish-mode=token or auto." >&2
           exit 1
@@ -119,7 +137,7 @@ runs:
           fi
           status="${PIPESTATUS[0]}"
           if grep -qi "already exists" "$log"; then
-            echo "crate version already exists; treating as published"
+            echo "::warning title=crate version already published::crate version already exists; treating as published."
             exit 0
           fi
           if grep -qi "Too Many Requests" "$log" && (( attempt < max_attempts )); then

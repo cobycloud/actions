@@ -57,6 +57,10 @@ inputs:
     description: Publish with npm provenance.
     required: false
     default: "true"
+  skip-existing:
+    description: Check npm before publishing and warn instead of failing when the package version already exists.
+    required: false
+    default: "false"
   dry-run:
     description: Run npm publish with --dry-run.
     required: false
@@ -125,6 +129,14 @@ runs:
             ;;
         esac
         publish_token="${NPM_API_TOKEN}"
+        if [[ "${{ inputs.skip-existing }}" == "true" && "${{ inputs.dry-run }}" != "true" ]]; then
+          package_name="$(node -p "require('./package.json').name")"
+          package_version="$(node -p "require('./package.json').version")"
+          if npm view "${package_name}@${package_version}" version --json >/dev/null 2>&1; then
+            echo "::warning title=npm package already published::${package_name}@${package_version} already exists; skipping publish."
+            exit 0
+          fi
+        fi
         if [[ "${mode}" == "token" && -z "${publish_token}" ]]; then
           echo "NPM_API_TOKEN is required when publish-mode is token." >&2
           exit 1
