@@ -2,7 +2,7 @@ name: crates.io Publish
 description: Publish a Rust crate with cargo publish.
 inputs:
   publish-mode:
-    description: "Publish mode: token requires crates-api-token. crates.io does not support trusted publishing, so trusted and tokenless auto fail fast."
+    description: "Publish mode: token requires crates-api-token, trusted uses crates.io Trusted Publishing, auto uses crates-api-token when present and otherwise uses Trusted Publishing."
     required: false
     default: token
   rust-toolchain:
@@ -99,8 +99,15 @@ runs:
           fi
         fi
         if [[ "${mode}" == "trusted" ]] || [[ "${mode}" == "auto" && -z "${publish_token}" ]]; then
-          echo "crates.io does not support trusted publishing in this action; set CRATES_API_TOKEN and use publish-mode=token or auto." >&2
-          exit 1
+          if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
+            echo "GitHub OIDC token request variables are unavailable; grant id-token: write or use crates-api-token." >&2
+            exit 1
+          fi
+          oidc_response="$(curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=crates.io")"
+          oidc_jwt="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<< "${oidc_response}")"
+          exchange_body="$(python3 -c 'import json,sys; print(json.dumps({"jwt": sys.stdin.read().strip()}))' <<< "${oidc_jwt}")"
+          exchange_response="$(curl -sS -X POST -H "Content-Type: application/json" -H "Accept: application/json" -d "${exchange_body}" "https://crates.io/api/v1/trusted_publishing/tokens")"
+          publish_token="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' <<< "${exchange_response}")"
         fi
         if [[ -z "${publish_token}" ]]; then
           echo "CRATES_API_TOKEN is required when publish-mode is token." >&2
