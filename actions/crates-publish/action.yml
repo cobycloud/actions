@@ -89,14 +89,13 @@ runs:
           metadata="$(cargo metadata --no-deps --format-version 1)"
           crate_name="$(python3 -c 'import json,sys; data=json.load(sys.stdin); package="${{ inputs.package }}"; matches=[p for p in data["packages"] if not package or p["name"] == package]; print(matches[0]["name"])' <<< "${metadata}")"
           crate_version="$(python3 -c 'import json,sys; data=json.load(sys.stdin); package="${{ inputs.package }}"; matches=[p for p in data["packages"] if not package or p["name"] == package]; print(matches[0]["version"])' <<< "${metadata}")"
-          status="$(curl -sS -o /dev/null -w "%{http_code}" "https://crates.io/api/v1/crates/${crate_name}/${crate_version}")"
+          status="$(curl -sS -o /dev/null -w "%{http_code}" -H "User-Agent: cobycloud-actions-crates-publish/1.0" "https://crates.io/api/v1/crates/${crate_name}/${crate_version}")"
           if [[ "${status}" == "200" ]]; then
             echo "::warning title=crate version already published::${crate_name}@${crate_version} already exists on crates.io; skipping publish."
             exit 0
           fi
           if [[ "${status}" != "404" ]]; then
-            echo "Failed to check crates.io for ${crate_name}@${crate_version}; HTTP ${status}." >&2
-            exit 1
+            echo "::warning title=crate existence check inconclusive::Failed to check crates.io for ${crate_name}@${crate_version}; HTTP ${status}. Continuing to cargo publish; existing-version errors will still be treated as published."
           fi
         fi
         if [[ "${mode}" == "trusted" ]] || [[ "${mode}" == "auto" && -z "${publish_token}" ]]; then
