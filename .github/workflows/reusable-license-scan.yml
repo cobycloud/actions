@@ -37,7 +37,7 @@ jobs:
   license-scan:
     runs-on: ${{ inputs.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: cobycloud/actions/actions/license-scan@main
         with:
@@ -46,7 +46,7 @@ jobs:
           fail-on-missing: ${{ inputs.fail-on-missing }}
           fail-on-disallowed: ${{ inputs.fail-on-disallowed }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: license-scan
           path: reports/license-scan.*

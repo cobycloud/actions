@@ -48,7 +48,7 @@ jobs:
       matrix-json: ${{ steps.discover.outputs.matrix-json }}
       package-count: ${{ steps.discover.outputs.package-count }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 

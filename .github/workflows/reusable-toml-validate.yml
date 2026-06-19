@@ -27,14 +27,14 @@ jobs:
   toml-validate:
     runs-on: ${{ inputs.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: cobycloud/actions/actions/toml-validate@main
         with:
           toml-globs: ${{ inputs.toml-globs }}
           require-known-package-section: ${{ inputs.require-known-package-section }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: toml-validate
           path: reports/toml-validate.*

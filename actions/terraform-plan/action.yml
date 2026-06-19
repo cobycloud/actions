@@ -54,7 +54,7 @@ runs:
       run: ${{ inputs.plan-command }}
 
     - name: Upload Terraform plan
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ inputs.artifact-name }}
         path: ${{ inputs.working-directory }}/${{ inputs.plan-path }}

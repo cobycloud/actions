@@ -50,7 +50,7 @@ runs:
   steps:
     - name: Checkout
       if: ${{ inputs.checkout == 'true' }}
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Dependency review
       uses: actions/dependency-review-action@v4

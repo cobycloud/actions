@@ -47,7 +47,7 @@ jobs:
   tauri-release:
     runs-on: ${{ inputs.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: cobycloud/actions/actions/tauri-artifact-build@main
         with:

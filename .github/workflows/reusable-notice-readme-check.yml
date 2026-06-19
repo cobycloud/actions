@@ -35,7 +35,7 @@ jobs:
   notice-readme-check:
     runs-on: ${{ inputs.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: cobycloud/actions/actions/notice-readme-check@main
         with:
@@ -45,7 +45,7 @@ jobs:
           require-readme: ${{ inputs.require-readme }}
           package-name-required-in-readme: ${{ inputs.package-name-required-in-readme }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: notice-readme-check
           path: reports/notice-readme-check.*

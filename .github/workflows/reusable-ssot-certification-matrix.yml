@@ -54,7 +54,7 @@ jobs:
         profile-id: ${{ fromJSON(inputs.profile-ids) }}
     runs-on: ${{ inputs.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: cobycloud/actions/actions/ssot-certification-profile@main
         with:
           working-directory: ${{ inputs.working-directory }}

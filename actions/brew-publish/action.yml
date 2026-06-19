@@ -34,7 +34,7 @@ runs:
   using: composite
   steps:
     - name: Checkout tap
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         repository: ${{ inputs.tap-repository }}
         ref: ${{ inputs.ref }}

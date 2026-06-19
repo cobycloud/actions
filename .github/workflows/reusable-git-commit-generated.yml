@@ -32,7 +32,7 @@ jobs:
     outputs:
       committed: ${{ steps.commit.outputs.committed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - id: commit
         uses: cobycloud/actions/actions/git-commit-generated@main

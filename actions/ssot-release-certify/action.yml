@@ -59,7 +59,7 @@ runs:
 
     - name: Upload SSOT release evidence
       if: ${{ inputs.evidence-path != '' }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ssot-release-${{ inputs.release-id }}-${{ inputs.operation }}
         path: ${{ inputs.working-directory }}/${{ inputs.evidence-path }}

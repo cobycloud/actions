@@ -54,7 +54,7 @@ jobs:
         package_cell: ${{ fromJSON(inputs.package-cells) }}
     runs-on: ${{ inputs.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: uv package cell
         if: ${{ matrix.package_cell.ecosystem == 'uv' || matrix.package_cell.ecosystem == 'python' }}

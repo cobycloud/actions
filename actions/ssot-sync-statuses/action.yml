@@ -58,7 +58,7 @@ runs:
 
     - name: Upload SSOT sync report
       if: ${{ inputs.report-path != '' }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ssot-sync-statuses-report
         path: ${{ inputs.working-directory }}/${{ inputs.report-path }}

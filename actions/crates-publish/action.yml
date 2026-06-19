@@ -45,6 +45,10 @@ inputs:
     description: Run cargo publish with --allow-dirty.
     required: false
     default: "false"
+  no-verify:
+    description: Run cargo publish with --no-verify.
+    required: false
+    default: "false"
   skip-existing:
     description: Check crates.io before publishing and warn instead of failing when the crate version already exists.
     required: false
@@ -126,6 +130,9 @@ runs:
         fi
         if [[ "${{ inputs.allow-dirty }}" == "true" ]]; then
           args+=(--allow-dirty)
+        fi
+        if [[ "${{ inputs.no-verify }}" == "true" ]]; then
+          args+=(--no-verify)
         fi
         max_attempts="${{ inputs.max-attempts }}"
         retry_delay="${{ inputs.retry-delay-seconds }}"

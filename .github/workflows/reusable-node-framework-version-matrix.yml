@@ -61,7 +61,7 @@ jobs:
         framework_cell: ${{ fromJSON(inputs.framework-cells) }}
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: cobycloud/actions/actions/js-framework-ci@main
         with:
@@ -76,7 +76,7 @@ jobs:
 
       - name: Upload framework artifact
         if: ${{ inputs.artifact-path != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ inputs.artifact-name-prefix }}-${{ matrix.framework_cell.framework }}-node-${{ matrix.node-version }}-${{ matrix.runner }}
           path: ${{ matrix.framework_cell.working-directory }}/${{ inputs.artifact-path }}

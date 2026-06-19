@@ -40,7 +40,7 @@ jobs:
   sign-artifacts:
     runs-on: ${{ inputs.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: cobycloud/actions/actions/sign-artifacts@main
         with:
@@ -50,7 +50,7 @@ jobs:
           password: ${{ secrets.COSIGN_PASSWORD }}
           recursive: ${{ inputs.recursive }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: ${{ inputs.upload-signatures == true }}
         with:
           name: ${{ inputs.signatures-artifact-name }}

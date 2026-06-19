@@ -42,7 +42,7 @@ jobs:
       group: build-and-commit-dist-${{ github.ref }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 

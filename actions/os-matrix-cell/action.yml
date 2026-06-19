@@ -90,7 +90,7 @@ runs:
 
     - name: Setup Node
       if: ${{ inputs.ecosystem == 'node' }}
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: ${{ steps.defaults.outputs.version }}
         cache: npm
@@ -116,7 +116,7 @@ runs:
 
     - name: Setup Python
       if: ${{ inputs.ecosystem == 'python' }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ steps.defaults.outputs.version }}
 
