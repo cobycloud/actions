@@ -107,7 +107,7 @@ runs:
           oidc_jwt="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<< "${oidc_response}")"
           exchange_body="$(python3 -c 'import json,sys; print(json.dumps({"jwt": sys.stdin.read().strip()}))' <<< "${oidc_jwt}")"
           exchange_tmp="$(mktemp)"
-          exchange_status="$(curl -sS -o "${exchange_tmp}" -w "%{http_code}" -X POST -H "Content-Type: application/json" -H "Accept: application/json" -d "${exchange_body}" "https://crates.io/api/v1/trusted_publishing/tokens")"
+          exchange_status="$(curl -sS -o "${exchange_tmp}" -w "%{http_code}" -X POST -H "User-Agent: cobycloud-actions-crates-publish/1.0" -H "Content-Type: application/json" -H "Accept: application/json" -d "${exchange_body}" "https://crates.io/api/v1/trusted_publishing/tokens")"
           exchange_response="$(cat "${exchange_tmp}")"
           if [[ "${exchange_status}" != "200" ]]; then
             echo "crates.io trusted publishing token exchange failed with HTTP ${exchange_status}." >&2
