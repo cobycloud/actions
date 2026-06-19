@@ -1,10 +1,14 @@
 name: npm Publish
 description: Publish a Node package to npmjs or another npm-compatible registry.
 inputs:
+  publish-mode:
+    description: Publish mode: token requires npm-api-token, trusted uses npm trusted publishing, auto uses npm-api-token when present and otherwise uses trusted publishing.
+    required: false
+    default: auto
   node-version:
     description: Node.js version to install.
     required: false
-    default: "20"
+    default: "25"
   package-directory:
     description: Directory containing package.json.
     required: false
@@ -25,9 +29,10 @@ inputs:
     description: Optional package scope for actions/setup-node registry configuration.
     required: false
     default: ""
-  npm-token:
-    description: npm automation token.
-    required: true
+  npm-api-token:
+    description: Optional npm automation token. Required when publish-mode is token. Leave empty for trusted publishing in auto mode.
+    required: false
+    default: ""
   install-command:
     description: Optional install command. Leave empty to skip install.
     required: false
@@ -108,9 +113,32 @@ runs:
       shell: bash
       working-directory: ${{ inputs.package-directory }}
       env:
-        NODE_AUTH_TOKEN: ${{ inputs.npm-token }}
+        NPM_API_TOKEN: ${{ inputs.npm-api-token }}
       run: |
         set -euo pipefail
+        mode="${{ inputs.publish-mode }}"
+        case "${mode}" in
+          auto|token|trusted) ;;
+          *)
+            echo "publish-mode must be one of: auto, token, trusted." >&2
+            exit 1
+            ;;
+        esac
+        publish_token="${NPM_API_TOKEN}"
+        if [[ "${mode}" == "token" && -z "${publish_token}" ]]; then
+          echo "NPM_API_TOKEN is required when publish-mode is token." >&2
+          exit 1
+        fi
+        if [[ "${mode}" == "trusted" ]]; then
+          publish_token=""
+        fi
+        if [[ -n "${publish_token}" ]]; then
+          echo "::add-mask::${publish_token}"
+          export NODE_AUTH_TOKEN="${publish_token}"
+          export NPM_TOKEN="${publish_token}"
+        else
+          unset NODE_AUTH_TOKEN NPM_TOKEN NPM_CONFIG_USERCONFIG NPM_CONFIG_ALWAYS_AUTH
+        fi
         args=(--tag "${{ inputs.tag }}")
         if [[ -n "${{ inputs.access }}" ]]; then
           args+=(--access "${{ inputs.access }}")

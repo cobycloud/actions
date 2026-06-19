@@ -10,9 +10,9 @@ Everything below is either still missing or has now been partially covered by th
 
 Implemented families:
 
-- `reusable-pypi-publish.yml`: publish built Python distributions to PyPI or TestPyPI, with explicit token-only and Trusted-Publishing-only composite actions available for caller workflows.
-- `reusable-npm-publish.yml`: publish Node packages to npmjs, including registry URL, access level, provenance, and tag/channel inputs.
-- `reusable-crates-publish.yml`: publish Rust crates to crates.io, with dry-run and ordered workspace publish support.
+- `reusable-pypi-publish.yml`: publish built Python distributions to PyPI or TestPyPI with token-only, trusted-only, or token-or-trusted mode.
+- `reusable-npm-publish.yml`: publish Node packages to npmjs with token-only, trusted-only, or token-or-trusted mode, including registry URL, access level, provenance, and tag/channel inputs.
+- `reusable-crates-publish.yml`: publish Rust crates to crates.io with canonical `CRATES_API_TOKEN` handling, dry-run support, and clear failure for unsupported trusted-publishing requests.
 - `reusable-github-release.yml`: create or update GitHub Releases, upload assets, attach checksums, and handle prerelease/draft flags.
 - `reusable-release-assets.yml`: download build artifacts, normalize names, generate checksums, and upload release assets.
 

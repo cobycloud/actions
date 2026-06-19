@@ -18,7 +18,7 @@ steps:
   - uses: cobycloud/actions/actions/pypi-token-publish@main
     with:
       packages-dir: dist
-      token: ${{ secrets.PYPI_API_TOKEN }}
+      api-token: ${{ secrets.PYPI_API_TOKEN }}
       skip-existing: "true"
 ```
 
@@ -28,7 +28,7 @@ steps:
 | --- | --- | --- |
 | `packages-dir` | `dist` | Directory containing distributions. |
 | `repository-url` | empty | Optional repository URL, such as `https://test.pypi.org/legacy/`. |
-| `token` | required | PyPI API token. |
+| `api-token` | required | PyPI API token from `PYPI_API_TOKEN`. |
 | `skip-existing` | `false` | Do not fail if a distribution already exists. |
 
 ## Dependencies

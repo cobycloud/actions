@@ -27,6 +27,8 @@ steps:
   - uses: cobycloud/actions/actions/pypi-publish@main
     with:
       packages-dir: dist
+      publish-mode: auto
+      api-token: ${{ secrets.PYPI_API_TOKEN }}
 ```
 
 ## Token Example
@@ -36,7 +38,7 @@ steps:
   - uses: cobycloud/actions/actions/pypi-token-publish@main
     with:
       packages-dir: dist
-      token: ${{ secrets.PYPI_API_TOKEN }}
+      api-token: ${{ secrets.PYPI_API_TOKEN }}
 ```
 
 ## Trusted Publishing Example
@@ -56,9 +58,10 @@ steps:
 
 | Input | Default | Description |
 | --- | --- | --- |
+| `publish-mode` | `auto` | `token` requires `api-token`; `trusted` requires PyPI Trusted Publishing; `auto` uses `api-token` when present and otherwise uses trusted publishing. |
 | `packages-dir` | `dist` | Directory or glob containing distributions. |
 | `repository-url` | empty | Optional repository URL, such as `https://test.pypi.org/legacy/`. |
-| `password` | empty | Optional PyPI API token. Empty uses trusted publishing. |
+| `api-token` | empty | Optional `PYPI_API_TOKEN`. Required when `publish-mode` is `token`. |
 | `skip-existing` | `false` | Do not fail if a distribution already exists. |
 | `verbose` | `false` | Enable verbose upload output. |
 | `print-hash` | `true` | Print hashes for uploaded distributions. |
@@ -81,10 +84,11 @@ Reusable workflow secrets:
 
 | Secret | Required | Description |
 | --- | --- | --- |
-| `PYPI_TOKEN` | no | Optional PyPI API token. Omit for trusted publishing. |
+| `PYPI_API_TOKEN` | no | Optional PyPI API token. Required only when `publish-mode` is `token`. |
 
 Reusable workflow extra inputs:
 
 | Input | Default | Description |
 | --- | --- | --- |
 | `artifact-name` | empty | Optional workflow artifact to download into `packages-dir` before publishing. |
+| `publish-mode` | `auto` | `token`, `trusted`, or `auto`. |

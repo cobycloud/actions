@@ -1,6 +1,10 @@
 name: crates.io Publish
 description: Publish a Rust crate with cargo publish.
 inputs:
+  publish-mode:
+    description: Publish mode: token requires crates-api-token. crates.io does not support trusted publishing, so trusted and tokenless auto fail fast.
+    required: false
+    default: token
   rust-toolchain:
     description: Rust toolchain to install.
     required: false
@@ -9,9 +13,10 @@ inputs:
     description: Directory containing Cargo.toml.
     required: false
     default: "."
-  cargo-token:
-    description: crates.io or registry token.
-    required: true
+  crates-api-token:
+    description: Optional crates.io or registry token. Required when publishing to crates.io.
+    required: false
+    default: ""
   registry:
     description: Optional Cargo registry name. Leave empty for crates.io.
     required: false
@@ -60,9 +65,28 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
-        CARGO_REGISTRY_TOKEN: ${{ inputs.cargo-token }}
+        CRATES_API_TOKEN: ${{ inputs.crates-api-token }}
       run: |
         set -euo pipefail
+        mode="${{ inputs.publish-mode }}"
+        case "${mode}" in
+          auto|token|trusted) ;;
+          *)
+            echo "publish-mode must be one of: auto, token, trusted." >&2
+            exit 1
+            ;;
+        esac
+        publish_token="${CRATES_API_TOKEN}"
+        if [[ "${mode}" == "trusted" ]] || [[ "${mode}" == "auto" && -z "${publish_token}" ]]; then
+          echo "crates.io does not support trusted publishing in this action; set CRATES_API_TOKEN and use publish-mode=token or auto." >&2
+          exit 1
+        fi
+        if [[ -z "${publish_token}" ]]; then
+          echo "CRATES_API_TOKEN is required when publish-mode is token." >&2
+          exit 1
+        fi
+        echo "::add-mask::${publish_token}"
+        export CARGO_REGISTRY_TOKEN="${publish_token}"
         args=()
         if [[ -n "${{ inputs.registry }}" ]]; then
           args+=(--registry "${{ inputs.registry }}")

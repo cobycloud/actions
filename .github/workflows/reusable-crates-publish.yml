@@ -7,6 +7,10 @@ on:
         type: string
         required: false
         default: ubuntu-latest
+      publish-mode:
+        type: string
+        required: false
+        default: token
       rust-toolchain:
         type: string
         required: false
@@ -44,8 +48,8 @@ on:
         required: false
         default: false
     secrets:
-      CARGO_REGISTRY_TOKEN:
-        required: true
+      CRATES_API_TOKEN:
+        required: false
 
 permissions:
   contents: read
@@ -58,9 +62,10 @@ jobs:
 
       - uses: cobycloud/actions/actions/crates-publish@main
         with:
+          publish-mode: ${{ inputs.publish-mode }}
           rust-toolchain: ${{ inputs.rust-toolchain }}
           working-directory: ${{ inputs.working-directory }}
-          cargo-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          crates-api-token: ${{ secrets.CRATES_API_TOKEN }}
           registry: ${{ inputs.registry }}
           package: ${{ inputs.package }}
           features: ${{ inputs.features }}

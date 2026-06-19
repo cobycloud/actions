@@ -9,7 +9,7 @@ inputs:
     description: Optional repository URL, such as https://test.pypi.org/legacy/.
     required: false
     default: ""
-  token:
+  api-token:
     description: PyPI API token.
     required: true
   skip-existing:
@@ -22,11 +22,11 @@ runs:
     - name: Publish distributions with PyPI API token
       shell: bash
       env:
-        PYPI_API_TOKEN: ${{ inputs.token }}
+        PYPI_API_TOKEN: ${{ inputs.api-token }}
       run: |
         set -euo pipefail
         if [[ -z "${PYPI_API_TOKEN}" ]]; then
-          echo "token is required for pypi-token-publish." >&2
+          echo "PYPI_API_TOKEN is required for pypi-token-publish." >&2
           exit 1
         fi
         echo "::add-mask::${PYPI_API_TOKEN}"

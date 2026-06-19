@@ -1,6 +1,10 @@
 name: PyPI Publish
 description: Publish Python distributions to PyPI or TestPyPI using trusted publishing or token fallback.
 inputs:
+  publish-mode:
+    description: Publish mode: token requires api-token, trusted requires PyPI Trusted Publishing, auto uses api-token when present and otherwise uses trusted publishing.
+    required: false
+    default: auto
   packages-dir:
     description: Directory or glob containing distribution files.
     required: false
@@ -9,8 +13,8 @@ inputs:
     description: Optional repository URL, such as https://test.pypi.org/legacy/.
     required: false
     default: ""
-  password:
-    description: Optional PyPI API token. Leave empty for trusted publishing.
+  api-token:
+    description: Optional PyPI API token. Required when publish-mode is token. Leave empty for trusted publishing in auto mode.
     required: false
     default: ""
   skip-existing:
@@ -31,10 +35,25 @@ runs:
     - name: Publish distributions
       shell: bash
       env:
-        PYPI_API_TOKEN: ${{ inputs.password }}
+        PYPI_API_TOKEN: ${{ inputs.api-token }}
       run: |
         set -euo pipefail
+        mode="${{ inputs.publish-mode }}"
+        case "${mode}" in
+          auto|token|trusted) ;;
+          *)
+            echo "publish-mode must be one of: auto, token, trusted." >&2
+            exit 1
+            ;;
+        esac
         publish_token="${PYPI_API_TOKEN}"
+        if [[ "${mode}" == "token" && -z "${publish_token}" ]]; then
+          echo "PYPI_API_TOKEN is required when publish-mode is token." >&2
+          exit 1
+        fi
+        if [[ "${mode}" == "trusted" ]]; then
+          publish_token=""
+        fi
         if [[ -z "${publish_token}" ]]; then
           if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]]; then
             echo "Trusted Publishing requires id-token: write permissions." >&2

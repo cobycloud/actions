@@ -7,6 +7,10 @@ on:
         type: string
         required: false
         default: ubuntu-latest
+      publish-mode:
+        type: string
+        required: false
+        default: auto
       packages-dir:
         type: string
         required: false
@@ -32,7 +36,7 @@ on:
         required: false
         default: true
     secrets:
-      PYPI_TOKEN:
+      PYPI_API_TOKEN:
         required: false
 
 permissions:
@@ -55,9 +59,10 @@ jobs:
 
       - uses: cobycloud/actions/actions/pypi-publish@main
         with:
+          publish-mode: ${{ inputs.publish-mode }}
           packages-dir: ${{ inputs.packages-dir }}
           repository-url: ${{ inputs.repository-url }}
-          password: ${{ secrets.PYPI_TOKEN }}
+          api-token: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: ${{ inputs.skip-existing }}
           verbose: ${{ inputs.verbose }}
           print-hash: ${{ inputs.print-hash }}

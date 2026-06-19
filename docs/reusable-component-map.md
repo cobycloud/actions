@@ -198,24 +198,24 @@ This map converts the workflow inventory into reusable external surfaces. It int
 - Actions: `actions/pypi-publish`, `actions/pypi-token-publish`, `actions/pypi-trusted-publish`
 - Workflow: `.github/workflows/reusable-pypi-publish.yml`
 - Replaces repeated jobs that publish prebuilt Python distributions with `uv publish`.
-- Main inputs: `packages-dir`, `repository-url`, `skip-existing`; token-only lanes also require `token`.
-- Domain fit: Python package release lanes that must choose API-token-only or Trusted-Publishing-only behavior explicitly.
+- Main inputs: `publish-mode`, `packages-dir`, `repository-url`, `skip-existing`, `api-token`.
+- Domain fit: Python package release lanes that must choose API-token-only, Trusted-Publishing-only, or token-or-trusted behavior explicitly.
 
 ### npm Publish
 
 - Action: `actions/npm-publish`
 - Workflow: `.github/workflows/reusable-npm-publish.yml`
 - Replaces repeated jobs that publish Node packages to npmjs or another npm-compatible registry.
-- Main inputs: `package-directory`, `registry-url`, `scope`, `tag`, `access`, `provenance`, `dry-run`.
-- Domain fit: Node package release lanes, Changesets-backed publish jobs, and npm provenance.
+- Main inputs: `publish-mode`, `package-directory`, `registry-url`, `scope`, `tag`, `access`, `provenance`, `dry-run`, `npm-api-token`.
+- Domain fit: Node package release lanes, Changesets-backed publish jobs, npm provenance, and npm trusted publishing.
 
 ### crates.io Publish
 
 - Action: `actions/crates-publish`
 - Workflow: `.github/workflows/reusable-crates-publish.yml`
 - Replaces repeated jobs that publish Rust crates with `cargo publish`.
-- Main inputs: `rust-toolchain`, `working-directory`, `registry`, `package`, `features`, `dry-run`.
-- Domain fit: Rust crate release lanes and publish dry-runs.
+- Main inputs: `publish-mode`, `rust-toolchain`, `working-directory`, `registry`, `package`, `features`, `dry-run`, `crates-api-token`.
+- Domain fit: Rust crate release lanes and publish dry-runs using token-based Cargo publication.
 
 ### GitHub Release
 

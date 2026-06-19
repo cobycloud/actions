@@ -67,11 +67,11 @@ This repository provides reusable GitHub Actions and reusable workflows for comm
 | [`docs/actions/ssot-certification-profile.md`](docs/actions/ssot-certification-profile.md) | Run SSOT certification profile checks. |
 | [`docs/actions/ssot-release-certify.md`](docs/actions/ssot-release-certify.md) | Certify, promote, or publish SSOT release entities. |
 | [`docs/actions/docker-compose-service.md`](docs/actions/docker-compose-service.md) | Restart, rebuild, or collect logs for one Docker Compose service. |
-| [`docs/actions/pypi-publish.md`](docs/actions/pypi-publish.md) | Publish Python distributions to PyPI or TestPyPI. |
+| [`docs/actions/pypi-publish.md`](docs/actions/pypi-publish.md) | Publish Python distributions with API-token, trusted-publishing, or token-or-trusted mode. |
 | [`docs/actions/pypi-token-publish.md`](docs/actions/pypi-token-publish.md) | Publish Python distributions with a PyPI API token only. |
 | [`docs/actions/pypi-trusted-publish.md`](docs/actions/pypi-trusted-publish.md) | Publish Python distributions with PyPI Trusted Publishing only. |
-| [`docs/actions/npm-publish.md`](docs/actions/npm-publish.md) | Publish Node packages to npmjs or another npm-compatible registry. |
-| [`docs/actions/crates-publish.md`](docs/actions/crates-publish.md) | Publish Rust crates with `cargo publish`. |
+| [`docs/actions/npm-publish.md`](docs/actions/npm-publish.md) | Publish Node packages with API-token, trusted-publishing, or token-or-trusted mode. |
+| [`docs/actions/crates-publish.md`](docs/actions/crates-publish.md) | Publish Rust crates with canonical `CRATES_API_TOKEN` handling. |
 | [`docs/actions/github-release.md`](docs/actions/github-release.md) | Create or update GitHub Releases and upload files. |
 | [`docs/actions/release-assets.md`](docs/actions/release-assets.md) | Download artifacts, normalize release assets, and generate checksums. |
 | [`docs/actions/version-bump.md`](docs/actions/version-bump.md) | Bump versions in package manifests, TOML files, and release metadata. |
@@ -145,11 +145,11 @@ Use composite actions when a repository already owns its workflow shape and only
 | [`./actions/ssot-certification-profile`](actions/ssot-certification-profile/action.yml) | [`docs/actions/ssot-certification-profile.md`](docs/actions/ssot-certification-profile.md) | Run SSOT certification profile checks. |
 | [`./actions/ssot-release-certify`](actions/ssot-release-certify/action.yml) | [`docs/actions/ssot-release-certify.md`](docs/actions/ssot-release-certify.md) | Certify, promote, or publish SSOT release entities. |
 | [`./actions/docker-compose-service`](actions/docker-compose-service/action.yml) | [`docs/actions/docker-compose-service.md`](docs/actions/docker-compose-service.md) | Restart, rebuild, or collect logs for one Docker Compose service. |
-| [`./actions/pypi-publish`](actions/pypi-publish/action.yml) | [`docs/actions/pypi-publish.md`](docs/actions/pypi-publish.md) | Publish Python distributions to PyPI or TestPyPI. |
+| [`./actions/pypi-publish`](actions/pypi-publish/action.yml) | [`docs/actions/pypi-publish.md`](docs/actions/pypi-publish.md) | Publish Python distributions with API-token, trusted-publishing, or token-or-trusted mode. |
 | [`./actions/pypi-token-publish`](actions/pypi-token-publish/action.yml) | [`docs/actions/pypi-token-publish.md`](docs/actions/pypi-token-publish.md) | Publish Python distributions with a PyPI API token only. |
 | [`./actions/pypi-trusted-publish`](actions/pypi-trusted-publish/action.yml) | [`docs/actions/pypi-trusted-publish.md`](docs/actions/pypi-trusted-publish.md) | Publish Python distributions with PyPI Trusted Publishing only. |
-| [`./actions/npm-publish`](actions/npm-publish/action.yml) | [`docs/actions/npm-publish.md`](docs/actions/npm-publish.md) | Publish Node packages to npmjs or another npm-compatible registry. |
-| [`./actions/crates-publish`](actions/crates-publish/action.yml) | [`docs/actions/crates-publish.md`](docs/actions/crates-publish.md) | Publish Rust crates with `cargo publish`. |
+| [`./actions/npm-publish`](actions/npm-publish/action.yml) | [`docs/actions/npm-publish.md`](docs/actions/npm-publish.md) | Publish Node packages with API-token, trusted-publishing, or token-or-trusted mode. |
+| [`./actions/crates-publish`](actions/crates-publish/action.yml) | [`docs/actions/crates-publish.md`](docs/actions/crates-publish.md) | Publish Rust crates with canonical `CRATES_API_TOKEN` handling. |
 | [`./actions/github-release`](actions/github-release/action.yml) | [`docs/actions/github-release.md`](docs/actions/github-release.md) | Create or update GitHub Releases and upload files. |
 | [`./actions/release-assets`](actions/release-assets/action.yml) | [`docs/actions/release-assets.md`](docs/actions/release-assets.md) | Download artifacts, normalize release assets, and generate checksums. |
 | [`./actions/version-bump`](actions/version-bump/action.yml) | [`docs/actions/version-bump.md`](docs/actions/version-bump.md) | Bump versions in package manifests, TOML files, and release metadata. |
@@ -251,9 +251,9 @@ Use reusable workflows when a repository wants the full job wrapper.
 | [`.github/workflows/reusable-ssot-certification-matrix.yml`](.github/workflows/reusable-ssot-certification-matrix.yml) | [`docs/actions/ssot-certification-profile.md`](docs/actions/ssot-certification-profile.md) | Run SSOT certification profiles as a matrix. |
 | [`.github/workflows/reusable-ssot-release-certify.yml`](.github/workflows/reusable-ssot-release-certify.yml) | [`docs/actions/ssot-release-certify.md`](docs/actions/ssot-release-certify.md) | Certify, promote, or publish SSOT release entities. |
 | [`.github/workflows/reusable-docker-compose-service.yml`](.github/workflows/reusable-docker-compose-service.yml) | [`docs/actions/docker-compose-service.md`](docs/actions/docker-compose-service.md) | Restart/rebuild/log a Docker Compose service from a deployment runner. |
-| [`.github/workflows/reusable-pypi-publish.yml`](.github/workflows/reusable-pypi-publish.yml) | [`docs/actions/pypi-publish.md`](docs/actions/pypi-publish.md) | Publish Python distributions to PyPI or TestPyPI. |
-| [`.github/workflows/reusable-npm-publish.yml`](.github/workflows/reusable-npm-publish.yml) | [`docs/actions/npm-publish.md`](docs/actions/npm-publish.md) | Publish Node packages to npmjs or another npm-compatible registry. |
-| [`.github/workflows/reusable-crates-publish.yml`](.github/workflows/reusable-crates-publish.yml) | [`docs/actions/crates-publish.md`](docs/actions/crates-publish.md) | Publish Rust crates with `cargo publish`. |
+| [`.github/workflows/reusable-pypi-publish.yml`](.github/workflows/reusable-pypi-publish.yml) | [`docs/actions/pypi-publish.md`](docs/actions/pypi-publish.md) | Publish Python distributions with API-token, trusted-publishing, or token-or-trusted mode. |
+| [`.github/workflows/reusable-npm-publish.yml`](.github/workflows/reusable-npm-publish.yml) | [`docs/actions/npm-publish.md`](docs/actions/npm-publish.md) | Publish Node packages with API-token, trusted-publishing, or token-or-trusted mode. |
+| [`.github/workflows/reusable-crates-publish.yml`](.github/workflows/reusable-crates-publish.yml) | [`docs/actions/crates-publish.md`](docs/actions/crates-publish.md) | Publish Rust crates with canonical `CRATES_API_TOKEN` handling. |
 | [`.github/workflows/reusable-github-release.yml`](.github/workflows/reusable-github-release.yml) | [`docs/actions/github-release.md`](docs/actions/github-release.md) | Create or update GitHub Releases and upload files. |
 | [`.github/workflows/reusable-release-assets.yml`](.github/workflows/reusable-release-assets.yml) | [`docs/actions/release-assets.md`](docs/actions/release-assets.md) | Download artifacts, normalize release assets, and generate checksums. |
 | [`.github/workflows/reusable-version-bump.yml`](.github/workflows/reusable-version-bump.yml) | [`docs/actions/version-bump.md`](docs/actions/version-bump.md) | Bump versions in package manifests, TOML files, and release metadata. |

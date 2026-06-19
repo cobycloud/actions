@@ -7,10 +7,14 @@ on:
         type: string
         required: false
         default: ubuntu-latest
+      publish-mode:
+        type: string
+        required: false
+        default: auto
       node-version:
         type: string
         required: false
-        default: "20"
+        default: "25"
       package-directory:
         type: string
         required: false
@@ -52,8 +56,8 @@ on:
         required: false
         default: false
     secrets:
-      NPM_TOKEN:
-        required: true
+      NPM_API_TOKEN:
+        required: false
 
 permissions:
   contents: read
@@ -67,11 +71,12 @@ jobs:
 
       - uses: cobycloud/actions/actions/npm-publish@main
         with:
+          publish-mode: ${{ inputs.publish-mode }}
           node-version: ${{ inputs.node-version }}
           package-directory: ${{ inputs.package-directory }}
           registry-url: ${{ inputs.registry-url }}
           scope: ${{ inputs.scope }}
-          npm-token: ${{ secrets.NPM_TOKEN }}
+          npm-api-token: ${{ secrets.NPM_API_TOKEN }}
           install-command: ${{ inputs.install-command }}
           build-command: ${{ inputs.build-command }}
           test-command: ${{ inputs.test-command }}
