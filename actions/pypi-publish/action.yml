@@ -2,7 +2,7 @@ name: PyPI Publish
 description: Publish Python distributions to PyPI or TestPyPI using trusted publishing or token fallback.
 inputs:
   publish-mode:
-    description: Publish mode: token requires api-token, trusted requires PyPI Trusted Publishing, auto uses api-token when present and otherwise uses trusted publishing.
+    description: "Publish mode: token requires api-token, trusted requires PyPI Trusted Publishing, auto uses api-token when present and otherwise uses trusted publishing."
     required: false
     default: auto
   packages-dir:

@@ -2,7 +2,7 @@ name: npm Publish
 description: Publish a Node package to npmjs or another npm-compatible registry.
 inputs:
   publish-mode:
-    description: Publish mode: token requires npm-api-token, trusted uses npm trusted publishing, auto uses npm-api-token when present and otherwise uses trusted publishing.
+    description: "Publish mode: token requires npm-api-token, trusted uses npm trusted publishing, auto uses npm-api-token when present and otherwise uses trusted publishing."
     required: false
     default: auto
   node-version:

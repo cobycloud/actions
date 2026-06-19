@@ -2,7 +2,7 @@ name: crates.io Publish
 description: Publish a Rust crate with cargo publish.
 inputs:
   publish-mode:
-    description: Publish mode: token requires crates-api-token. crates.io does not support trusted publishing, so trusted and tokenless auto fail fast.
+    description: "Publish mode: token requires crates-api-token. crates.io does not support trusted publishing, so trusted and tokenless auto fail fast."
     required: false
     default: token
   rust-toolchain:
