@@ -106,8 +106,15 @@ runs:
           oidc_response="$(curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=crates.io")"
           oidc_jwt="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<< "${oidc_response}")"
           exchange_body="$(python3 -c 'import json,sys; print(json.dumps({"jwt": sys.stdin.read().strip()}))' <<< "${oidc_jwt}")"
-          exchange_response="$(curl -sS -X POST -H "Content-Type: application/json" -H "Accept: application/json" -d "${exchange_body}" "https://crates.io/api/v1/trusted_publishing/tokens")"
-          publish_token="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' <<< "${exchange_response}")"
+          exchange_tmp="$(mktemp)"
+          exchange_status="$(curl -sS -o "${exchange_tmp}" -w "%{http_code}" -X POST -H "Content-Type: application/json" -H "Accept: application/json" -d "${exchange_body}" "https://crates.io/api/v1/trusted_publishing/tokens")"
+          exchange_response="$(cat "${exchange_tmp}")"
+          if [[ "${exchange_status}" != "200" ]]; then
+            echo "crates.io trusted publishing token exchange failed with HTTP ${exchange_status}." >&2
+            python3 -c 'import json,sys; data=sys.stdin.read(); print(data if data else "<empty response>")' <<< "${exchange_response}" >&2
+            exit 1
+          fi
+          publish_token="$(python3 -c 'import json,sys; data=json.load(sys.stdin); token=data.get("token"); assert token, data; print(token)' <<< "${exchange_response}")"
         fi
         if [[ -z "${publish_token}" ]]; then
           echo "CRATES_API_TOKEN is required when publish-mode is token." >&2
