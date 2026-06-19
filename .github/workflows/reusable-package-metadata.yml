@@ -51,7 +51,7 @@ jobs:
           require-readme: ${{ inputs.require-readme }}
           require-url: ${{ inputs.require-url }}
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: package-metadata
           path: reports/package-metadata.*

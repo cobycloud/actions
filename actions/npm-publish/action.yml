@@ -81,17 +81,31 @@ runs:
         if [[ -z "$cache_path" ]]; then
           cache_path="$install_dir/package-lock.json"
         fi
+        registry_url="${{ inputs.registry-url }}"
+        if [[ "${{ inputs.publish-mode }}" == "trusted" ]] || [[ "${{ inputs.publish-mode }}" == "auto" && -z "${{ inputs.npm-api-token }}" ]]; then
+          registry_url=""
+        fi
         {
           echo "install-directory=$install_dir"
           echo "cache-dependency-path=$cache_path"
+          echo "registry-url=$registry_url"
         } >> "$GITHUB_OUTPUT"
 
-    - name: Setup Node
+    - name: Setup Node with registry auth
+      if: ${{ steps.paths.outputs.registry-url != '' }}
       uses: actions/setup-node@v5
       with:
         node-version: ${{ inputs.node-version }}
-        registry-url: ${{ inputs.registry-url }}
+        registry-url: ${{ steps.paths.outputs.registry-url }}
         scope: ${{ inputs.scope }}
+        cache: npm
+        cache-dependency-path: ${{ steps.paths.outputs.cache-dependency-path }}
+
+    - name: Setup Node
+      if: ${{ steps.paths.outputs.registry-url == '' }}
+      uses: actions/setup-node@v5
+      with:
+        node-version: ${{ inputs.node-version }}
         cache: npm
         cache-dependency-path: ${{ steps.paths.outputs.cache-dependency-path }}
 

@@ -58,7 +58,7 @@ jobs:
 
       - name: Upload logs
         if: ${{ inputs.upload-logs == true }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.service }}-compose-logs
           path: ${{ inputs.logs-output }}

@@ -66,7 +66,7 @@ jobs:
           validate-version-files: ${{ inputs.validate-version-files }}
 
       - name: Upload release notes
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: release-notes
           path: ${{ steps.prepare.outputs.release-notes }}

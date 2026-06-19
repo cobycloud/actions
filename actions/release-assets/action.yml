@@ -70,7 +70,7 @@ runs:
 
     - name: Upload normalized release assets
       if: ${{ inputs.upload-artifact == 'true' }}
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: ${{ inputs.normalized-artifact-name }}
         path: ${{ inputs.output-path }}

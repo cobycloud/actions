@@ -45,7 +45,7 @@ jobs:
           require-readme: ${{ inputs.require-readme }}
           package-name-required-in-readme: ${{ inputs.package-name-required-in-readme }}
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: notice-readme-check
           path: reports/notice-readme-check.*

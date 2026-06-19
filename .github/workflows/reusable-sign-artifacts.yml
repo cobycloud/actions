@@ -50,7 +50,7 @@ jobs:
           password: ${{ secrets.COSIGN_PASSWORD }}
           recursive: ${{ inputs.recursive }}
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: ${{ inputs.upload-signatures == true }}
         with:
           name: ${{ inputs.signatures-artifact-name }}

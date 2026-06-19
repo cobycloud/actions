@@ -46,7 +46,7 @@ jobs:
           fail-on-missing: ${{ inputs.fail-on-missing }}
           fail-on-disallowed: ${{ inputs.fail-on-disallowed }}
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: license-scan
           path: reports/license-scan.*

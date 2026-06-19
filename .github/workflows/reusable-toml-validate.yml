@@ -34,7 +34,7 @@ jobs:
           toml-globs: ${{ inputs.toml-globs }}
           require-known-package-section: ${{ inputs.require-known-package-section }}
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: toml-validate
           path: reports/toml-validate.*
