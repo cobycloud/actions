@@ -42,9 +42,10 @@ on:
         required: false
         default: ""
       certificate-identity-regexp:
-        description: Cosign certificate identity regular expression for the caller workflow.
+        description: Cosign certificate identity regular expression for the reusable signing workflow.
         type: string
-        required: true
+        required: false
+        default: ^https://github.com/cobycloud/actions/.github/workflows/reusable-ghcr-publish.yml@refs/heads/master$
     outputs:
       digest:
         description: Published multi-platform image digest.
