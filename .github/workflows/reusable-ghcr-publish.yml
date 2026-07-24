@@ -1,0 +1,157 @@
+name: Reusable GHCR Publish
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: ubuntu-latest
+      image:
+        description: Fully qualified GHCR image name.
+        type: string
+        required: true
+      context:
+        description: Docker build context.
+        type: string
+        required: false
+        default: .
+      dockerfile:
+        description: Dockerfile path.
+        type: string
+        required: false
+        default: Dockerfile
+      platforms:
+        description: Comma-separated target platforms.
+        type: string
+        required: false
+        default: linux/amd64,linux/arm64
+      build-args:
+        description: Newline-separated Docker build arguments.
+        type: string
+        required: false
+        default: ""
+      tag-regex:
+        description: Bash regular expression for permitted release tags.
+        type: string
+        required: false
+        default: ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$
+      package-api-path:
+        description: Optional gh api path used to verify caller access to an existing package.
+        type: string
+        required: false
+        default: ""
+      certificate-identity-regexp:
+        description: Cosign certificate identity regular expression for the caller workflow.
+        type: string
+        required: true
+    outputs:
+      digest:
+        description: Published multi-platform image digest.
+        value: ${{ jobs.publish.outputs.digest }}
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  publish:
+    runs-on: ${{ inputs.runner }}
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate release tag
+        shell: bash
+        env:
+          TAG_REGEX: ${{ inputs.tag-regex }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$GITHUB_REF_NAME" =~ $TAG_REGEX ]]; then
+            echo "Unsupported release tag: $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: sigstore/cosign-installer@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify GHCR package Actions access
+        if: ${{ inputs.package-api-path != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_API_PATH: ${{ inputs.package-api-path }}
+        shell: bash
+        run: gh api "$PACKAGE_API_PATH" > /dev/null
+
+      - uses: docker/metadata-action@v6
+        id: meta
+        with:
+          images: ${{ inputs.image }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+
+      - uses: docker/build-push-action@v6
+        id: push
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          platforms: ${{ inputs.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ inputs.build-args }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Sign immutable GHCR digest
+        env:
+          IMAGE: ${{ inputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        shell: bash
+        run: cosign sign --yes "$IMAGE@$DIGEST"
+
+      - name: Attest immutable GHCR provenance
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ inputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Pull the public immutable image without registry credentials
+        env:
+          IMAGE: ${{ inputs.image }}@${{ steps.push.outputs.digest }}
+        shell: bash
+        run: |
+          docker logout ghcr.io
+          docker pull "$IMAGE"
+
+      - name: Verify the keyless image signature
+        env:
+          IMAGE: ${{ inputs.image }}@${{ steps.push.outputs.digest }}
+          CERTIFICATE_IDENTITY_REGEXP: ${{ inputs.certificate-identity-regexp }}
+        shell: bash
+        run: >-
+          cosign verify "$IMAGE"
+          --certificate-identity-regexp "$CERTIFICATE_IDENTITY_REGEXP"
+          --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+      - name: Verify GitHub build provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ${{ inputs.image }}@${{ steps.push.outputs.digest }}
+        shell: bash
+        run: gh attestation verify "oci://$IMAGE" --repo "${{ github.repository }}"
