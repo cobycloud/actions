@@ -7,6 +7,10 @@ on:
         type: string
         required: false
         default: ubuntu-latest
+      environment:
+        type: string
+        required: false
+        default: pypi
       publish-mode:
         type: string
         required: false
@@ -47,6 +51,7 @@ permissions:
 jobs:
   publish:
     runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v5
 
