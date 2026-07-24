@@ -90,5 +90,5 @@ Reusable workflow extra inputs:
 
 | Input | Default | Description |
 | --- | --- | --- |
-| `artifact-name` | empty | Optional workflow artifact to download into `packages-dir` before publishing. |
+| `environment` | `pypi` | GitHub Environment used for trusted-publisher policy and approvals. |\n| `artifact-name` | empty | Optional workflow artifact to download into `packages-dir` before publishing. |
 | `publish-mode` | `auto` | `token`, `trusted`, or `auto`. |
