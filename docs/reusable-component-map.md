@@ -143,6 +143,13 @@ This map converts the workflow inventory into reusable external surfaces. It int
 - Replaces repeated deployment-runner jobs that stop, remove, prune, rebuild, and restart a single Compose service, or collect service logs.
 - Main inputs: `compose-command`, `compose-file`, `service`, `operation`, `prune`, `logs-output`.
 - Domain fit: self-hosted deployment runners and app stacks with client/backend/relay/minio service lanes.
+### Docker Container Network
+
+- Action: `actions/docker-container-network`
+- Workflow: `.github/workflows/reusable-docker-container-network.yml`
+- Idempotently attaches or detaches an existing proxy or gateway container from an application-specific Docker network.
+- Main inputs: `container`, `network`, `operation`, `aliases`, `force`.
+- Domain fit: container-name upstream routing without publishing private HTTP service ports.
 
 ### Terraform
 

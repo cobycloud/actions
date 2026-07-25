@@ -1,0 +1,50 @@
+name: Reusable Docker Container Network
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        required: false
+        default: deployment
+      container:
+        type: string
+        required: true
+      network:
+        type: string
+        required: true
+      operation:
+        type: string
+        required: false
+        default: attach
+      aliases:
+        type: string
+        required: false
+        default: ""
+      force:
+        type: boolean
+        required: false
+        default: false
+      environment:
+        type: string
+        required: false
+        default: deployment
+
+permissions:
+  contents: read
+
+jobs:
+  container-network:
+    runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: docker-container-network-${{ inputs.container }}-${{ inputs.network }}
+      cancel-in-progress: false
+    steps:
+      - uses: cobycloud/actions/actions/docker-container-network@main
+        with:
+          container: ${{ inputs.container }}
+          network: ${{ inputs.network }}
+          operation: ${{ inputs.operation }}
+          aliases: ${{ inputs.aliases }}
+          force: ${{ inputs.force }}

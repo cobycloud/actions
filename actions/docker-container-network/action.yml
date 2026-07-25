@@ -1,0 +1,85 @@
+name: Docker Container Network
+description: Idempotently attach or detach a running container from a Docker network.
+inputs:
+  container:
+    description: Existing Docker container name or ID.
+    required: true
+  network:
+    description: Existing Docker network name.
+    required: true
+  operation:
+    description: One of attach or detach.
+    required: false
+    default: attach
+  aliases:
+    description: Optional comma-separated network aliases used when attaching.
+    required: false
+    default: ""
+  force:
+    description: Force network detachment when operation is detach.
+    required: false
+    default: "false"
+outputs:
+  attached:
+    description: Whether the container is attached after the operation.
+    value: ${{ steps.network.outputs.attached }}
+runs:
+  using: composite
+  steps:
+    - id: network
+      name: Reconcile container network attachment
+      shell: bash
+      env:
+        INPUT_CONTAINER: ${{ inputs.container }}
+        INPUT_NETWORK: ${{ inputs.network }}
+        INPUT_OPERATION: ${{ inputs.operation }}
+        INPUT_ALIASES: ${{ inputs.aliases }}
+        INPUT_FORCE: ${{ inputs.force }}
+      run: |
+        set -euo pipefail
+        container="$INPUT_CONTAINER"
+        network="$INPUT_NETWORK"
+        operation="$INPUT_OPERATION"
+
+        test -n "$container" || { echo "container is required" >&2; exit 2; }
+        test -n "$network" || { echo "network is required" >&2; exit 2; }
+        docker container inspect "$container" >/dev/null
+        docker network inspect "$network" >/dev/null
+
+        is_attached() {
+          docker container inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' "$container" |
+            grep -Fxq "$network"
+        }
+
+        case "$operation" in
+          attach)
+            if ! is_attached; then
+              args=()
+              IFS=',' read -ra aliases <<< "$INPUT_ALIASES"
+              for alias in "${aliases[@]}"; do
+                alias="${alias#${alias%%[![:space:]]*}}"
+                alias="${alias%${alias##*[![:space:]]}}"
+                [[ -n "$alias" ]] && args+=(--alias "$alias")
+              done
+              docker network connect "${args[@]}" "$network" "$container"
+            fi
+            is_attached || { echo "Failed to attach $container to $network" >&2; exit 1; }
+            echo "attached=true" >> "$GITHUB_OUTPUT"
+            ;;
+          detach)
+            if is_attached; then
+              args=()
+              [[ "$INPUT_FORCE" == "true" ]] && args+=(--force)
+              docker network disconnect "${args[@]}" "$network" "$container"
+            fi
+            if is_attached; then
+              echo "Failed to detach $container from $network" >&2
+              exit 1
+            fi
+            echo "attached=false" >> "$GITHUB_OUTPUT"
+            ;;
+          *)
+            echo "Unsupported operation: $operation" >&2
+            exit 2
+            ;;
+        esac
