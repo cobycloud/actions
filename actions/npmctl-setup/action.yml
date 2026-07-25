@@ -1,0 +1,28 @@
+name: npmctl Setup
+description: Install npmctl and provider packages into one isolated uv environment.
+inputs:
+  package-specs:
+    description: Space-separated pip package specifications installed together.
+    required: true
+  python-version:
+    description: Python version.
+    required: false
+    default: "3.12"
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v7
+    - uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+    - shell: bash
+      env:
+        PACKAGE_SPECS: ${{ inputs.package-specs }}
+      run: |
+        set -euo pipefail
+        uv venv "$RUNNER_TEMP/npmctl-venv" --python "${{ inputs.python-version }}"
+        read -r -a specs <<< "$PACKAGE_SPECS"
+        uv pip install --python "$RUNNER_TEMP/npmctl-venv/bin/python" "${specs[@]}"
+        echo "$RUNNER_TEMP/npmctl-venv/bin" >> "$GITHUB_PATH"
+        "$RUNNER_TEMP/npmctl-venv/bin/npmctl" version --json
+        "$RUNNER_TEMP/npmctl-venv/bin/npmctl" plugins list --output json

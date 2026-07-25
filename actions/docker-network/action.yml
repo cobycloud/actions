@@ -1,0 +1,35 @@
+name: Docker Network
+description: Idempotently create or remove an application-specific Docker bridge network.
+inputs:
+  network: {description: Docker network name, required: true}
+  operation: {description: create or remove, required: false, default: create}
+  driver: {description: Network driver, required: false, default: bridge}
+outputs:
+  exists: {description: Whether the network exists, value: "${{ steps.network.outputs.exists }}"}
+runs:
+  using: composite
+  steps:
+    - id: network
+      shell: bash
+      env:
+        NETWORK: ${{ inputs.network }}
+        OPERATION: ${{ inputs.operation }}
+        DRIVER: ${{ inputs.driver }}
+      run: |
+        set -euo pipefail
+        case "$OPERATION" in
+          create)
+            docker network inspect "$NETWORK" >/dev/null 2>&1 || docker network create --driver "$DRIVER" "$NETWORK" >/dev/null
+            docker network inspect "$NETWORK" >/dev/null
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            ;;
+          remove)
+            if docker network inspect "$NETWORK" >/dev/null 2>&1; then
+              attached="$(docker network inspect --format '{{len .Containers}}' "$NETWORK")"
+              [[ "$attached" == "0" ]] || { echo "network has $attached attached containers" >&2; exit 1; }
+              docker network rm "$NETWORK" >/dev/null
+            fi
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            ;;
+          *) echo "Unsupported operation: $OPERATION" >&2; exit 2 ;;
+        esac

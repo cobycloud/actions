@@ -1,0 +1,28 @@
+name: Reusable Docker Compose Stack
+
+on:
+  workflow_call:
+    inputs:
+      runner: {type: string, required: false, default: self-hosted}
+      environment: {type: string, required: false, default: production}
+      compose-file: {type: string, required: true}
+      project-name: {type: string, required: true}
+      operation: {type: string, required: false, default: deploy}
+      env-file: {type: string, required: false, default: ""}
+permissions:
+  contents: read
+jobs:
+  compose:
+    runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: compose-stack-${{ inputs.project-name }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./actions/docker-compose-stack
+        with:
+          compose-file: ${{ inputs.compose-file }}
+          project-name: ${{ inputs.project-name }}
+          operation: ${{ inputs.operation }}
+          env-file: ${{ inputs.env-file }}

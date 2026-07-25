@@ -1,0 +1,92 @@
+name: Reusable npmctl Reconcile
+
+on:
+  workflow_call:
+    inputs:
+      runner: {type: string, required: false, default: self-hosted}
+      environment: {type: string, required: false, default: production}
+      desired-state: {type: string, required: true}
+      owner: {type: string, required: true}
+      package-specs: {type: string, required: true}
+    secrets:
+      NPM_BASE_URL: {required: true}
+      NPM_IDENTITY: {required: true}
+      NPM_SECRET: {required: true}
+      NAMECHEAP_API_USER: {required: false}
+      NAMECHEAP_API_KEY: {required: false}
+      NAMECHEAP_USERNAME: {required: false}
+      NAMECHEAP_CLIENT_IP: {required: false}
+permissions:
+  contents: read
+  actions: read
+jobs:
+  plan:
+    runs-on: ${{ inputs.runner }}
+    outputs:
+      artifact-name: ${{ steps.meta.outputs.name }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./actions/npmctl-setup
+        with:
+          package-specs: ${{ inputs.package-specs }}
+      - id: meta
+        shell: bash
+        run: echo "name=npmctl-plan-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - uses: ./actions/npmctl-plan
+        env:
+          NAMECHEAP_API_USER: ${{ secrets.NAMECHEAP_API_USER }}
+          NAMECHEAP_API_KEY: ${{ secrets.NAMECHEAP_API_KEY }}
+          NAMECHEAP_USERNAME: ${{ secrets.NAMECHEAP_USERNAME }}
+          NAMECHEAP_CLIENT_IP: ${{ secrets.NAMECHEAP_CLIENT_IP }}
+        with:
+          desired-state: ${{ inputs.desired-state }}
+          owner: ${{ inputs.owner }}
+          artifact-out: npmctl-plan.yaml
+          repository: ${{ github.repository }}
+          environment: ${{ inputs.environment }}
+          commit: ${{ github.sha }}
+          base-url: ${{ secrets.NPM_BASE_URL }}
+          identity: ${{ secrets.NPM_IDENTITY }}
+          secret: ${{ secrets.NPM_SECRET }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.name }}
+          path: npmctl-plan.yaml
+          if-no-files-found: error
+          retention-days: 7
+  apply:
+    needs: plan
+    runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: npmctl-${{ inputs.owner }}-${{ inputs.environment }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.plan.outputs.artifact-name }}
+      - uses: ./actions/npmctl-setup
+        with:
+          package-specs: ${{ inputs.package-specs }}
+      - uses: ./actions/npmctl-apply
+        env:
+          NAMECHEAP_API_USER: ${{ secrets.NAMECHEAP_API_USER }}
+          NAMECHEAP_API_KEY: ${{ secrets.NAMECHEAP_API_KEY }}
+          NAMECHEAP_USERNAME: ${{ secrets.NAMECHEAP_USERNAME }}
+          NAMECHEAP_CLIENT_IP: ${{ secrets.NAMECHEAP_CLIENT_IP }}
+        with:
+          artifact: npmctl-plan.yaml
+          repository: ${{ github.repository }}
+          environment: ${{ inputs.environment }}
+          commit: ${{ github.sha }}
+          base-url: ${{ secrets.NPM_BASE_URL }}
+          identity: ${{ secrets.NPM_IDENTITY }}
+          secret: ${{ secrets.NPM_SECRET }}
+          report: npmctl-apply.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: npmctl-apply-${{ github.sha }}
+          path: npmctl-apply.json
+          if-no-files-found: warn

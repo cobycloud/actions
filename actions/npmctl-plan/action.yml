@@ -1,0 +1,31 @@
+name: npmctl Plan
+description: Validate desired state and emit a commit-bound immutable PlanArtifact.
+inputs:
+  desired-state: {description: Desired-state path, required: true}
+  owner: {description: Owner scope, required: true}
+  artifact-out: {description: Artifact output path, required: true}
+  repository: {description: Repository binding, required: true}
+  environment: {description: Environment binding, required: true}
+  commit: {description: Commit binding, required: true}
+  base-url: {description: NPM API base URL, required: true}
+  identity: {description: NPM identity, required: true}
+  secret: {description: NPM secret, required: true}
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        NPM_BASE_URL: ${{ inputs.base-url }}
+        NPM_IDENTITY: ${{ inputs.identity }}
+        NPM_SECRET: ${{ inputs.secret }}
+        DESIRED_STATE: ${{ inputs.desired-state }}
+        OWNER: ${{ inputs.owner }}
+        ARTIFACT_OUT: ${{ inputs.artifact-out }}
+        REPOSITORY: ${{ inputs.repository }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        COMMIT: ${{ inputs.commit }}
+      run: |
+        set -euo pipefail
+        npmctl validate "$DESIRED_STATE"
+        npmctl plan "$DESIRED_STATE" --owner "$OWNER" --artifact-out "$ARTIFACT_OUT" --repository "$REPOSITORY" --environment "$ENVIRONMENT" --commit "$COMMIT" --output json
+        npmctl artifact inspect "$ARTIFACT_OUT" --strict --output json

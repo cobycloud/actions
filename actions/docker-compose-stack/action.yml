@@ -1,0 +1,46 @@
+name: Docker Compose Stack
+description: Validate, deploy, stop, remove, or collect logs for a complete Compose stack.
+inputs:
+  compose-file: {description: Compose file path, required: true}
+  project-name: {description: Explicit Compose project name, required: true}
+  operation: {description: config deploy stop down or logs, required: false, default: deploy}
+  env-file: {description: Optional environment file, required: false, default: ""}
+  build: {description: Build during deploy, required: false, default: "true"}
+  force-recreate: {description: Force recreation, required: false, default: "true"}
+  remove-orphans: {description: Remove orphans, required: false, default: "true"}
+  logs-output: {description: Logs output path, required: false, default: compose-stack.log}
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        FILE: ${{ inputs.compose-file }}
+        PROJECT: ${{ inputs.project-name }}
+        OPERATION: ${{ inputs.operation }}
+        ENV_FILE: ${{ inputs.env-file }}
+        BUILD: ${{ inputs.build }}
+        FORCE_RECREATE: ${{ inputs.force-recreate }}
+        REMOVE_ORPHANS: ${{ inputs.remove-orphans }}
+        LOGS_OUTPUT: ${{ inputs.logs-output }}
+      run: |
+        set -euo pipefail
+        args=(--project-name "$PROJECT" --file "$FILE")
+        [[ -z "$ENV_FILE" ]] || args+=(--env-file "$ENV_FILE")
+        docker compose "${args[@]}" config --quiet
+        case "$OPERATION" in
+          config) ;;
+          deploy)
+            op=(up -d)
+            [[ "$BUILD" == "true" ]] && op+=(--build)
+            [[ "$FORCE_RECREATE" == "true" ]] && op+=(--force-recreate)
+            [[ "$REMOVE_ORPHANS" == "true" ]] && op+=(--remove-orphans)
+            docker compose "${args[@]}" "${op[@]}"
+            ;;
+          stop) docker compose "${args[@]}" stop ;;
+          down)
+            op=(down); [[ "$REMOVE_ORPHANS" == "true" ]] && op+=(--remove-orphans)
+            docker compose "${args[@]}" "${op[@]}"
+            ;;
+          logs) docker compose "${args[@]}" logs --no-color > "$LOGS_OUTPUT" ;;
+          *) echo "Unsupported operation: $OPERATION" >&2; exit 2 ;;
+        esac

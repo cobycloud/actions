@@ -1,0 +1,29 @@
+name: npmctl Apply
+description: Apply an exact reviewed PlanArtifact and write structured evidence.
+inputs:
+  artifact: {description: Reviewed PlanArtifact path, required: true}
+  repository: {description: Repository binding, required: true}
+  environment: {description: Environment binding, required: true}
+  commit: {description: Commit binding, required: true}
+  base-url: {description: NPM API base URL, required: true}
+  identity: {description: NPM identity, required: true}
+  secret: {description: NPM secret, required: true}
+  report: {description: Apply report path, required: false, default: npmctl-apply.json}
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        NPM_BASE_URL: ${{ inputs.base-url }}
+        NPM_IDENTITY: ${{ inputs.identity }}
+        NPM_SECRET: ${{ inputs.secret }}
+        ARTIFACT: ${{ inputs.artifact }}
+        REPOSITORY: ${{ inputs.repository }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        COMMIT: ${{ inputs.commit }}
+        REPORT: ${{ inputs.report }}
+      run: |
+        set -euo pipefail
+        npmctl artifact inspect "$ARTIFACT" --strict --output json
+        npmctl apply --artifact "$ARTIFACT" --repository "$REPOSITORY" --environment "$ENVIRONMENT" --commit "$COMMIT" --output json | tee "$REPORT"
+        npmctl health --output json

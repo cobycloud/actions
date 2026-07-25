@@ -1,0 +1,28 @@
+name: Host Firewall Port
+description: Idempotently open or close one host firewall port with ufw or firewalld.
+inputs:
+  port: {description: Numeric host port, required: true}
+  protocol: {description: tcp or udp, required: false, default: tcp}
+  operation: {description: open or close, required: false, default: open}
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        PORT: ${{ inputs.port }}
+        PROTOCOL: ${{ inputs.protocol }}
+        OPERATION: ${{ inputs.operation }}
+      run: |
+        set -euo pipefail
+        [[ "$PORT" =~ ^[0-9]+$ ]] || { echo "port must be numeric" >&2; exit 2; }
+        [[ "$PROTOCOL" == "tcp" || "$PROTOCOL" == "udp" ]] || exit 2
+        [[ "$OPERATION" == "open" || "$OPERATION" == "close" ]] || exit 2
+        if command -v ufw >/dev/null 2>&1; then
+          if [[ "$OPERATION" == "open" ]]; then sudo ufw allow "$PORT/$PROTOCOL"; else sudo ufw delete allow "$PORT/$PROTOCOL" || true; fi
+        elif command -v firewall-cmd >/dev/null 2>&1; then
+          flag="--add-port"; [[ "$OPERATION" == "close" ]] && flag="--remove-port"
+          sudo firewall-cmd --permanent "$flag=$PORT/$PROTOCOL"
+          sudo firewall-cmd --reload
+        else
+          echo "Neither ufw nor firewalld is installed" >&2; exit 1
+        fi
