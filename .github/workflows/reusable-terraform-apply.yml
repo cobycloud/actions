@@ -41,9 +41,14 @@ on:
       expected-plan-sha256:
         type: string
         required: true
+      plan-run-id:
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   terraform-apply:
@@ -62,3 +67,5 @@ jobs:
           plan-path: ${{ inputs.plan-path }}
           expected-source-sha: ${{ inputs.expected-source-sha }}
           expected-plan-sha256: ${{ inputs.expected-plan-sha256 }}
+          plan-run-id: ${{ inputs.plan-run-id }}
+          github-token: ${{ github.token }}

@@ -31,6 +31,14 @@ inputs:
   expected-plan-sha256:
     description: Required SHA-256 digest emitted by terraform-plan.
     required: true
+  plan-run-id:
+    description: Workflow run ID that produced the reviewed plan artifact.
+    required: false
+    default: ""
+  github-token:
+    description: GitHub token with actions:read when downloading from another run.
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -44,6 +52,8 @@ runs:
       with:
         name: ${{ inputs.plan-artifact-name }}
         path: ${{ inputs.working-directory }}
+        run-id: ${{ inputs.plan-run-id }}
+        github-token: ${{ inputs.github-token }}
 
     - name: Verify plan provenance
       shell: bash

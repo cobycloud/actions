@@ -31,4 +31,8 @@ jobs:
       apply-command: terraform apply -auto-approve tfplan
       expected-source-sha: ${{ needs.plan.outputs.source-sha }}
       expected-plan-sha256: ${{ needs.plan.outputs.plan-sha256 }}
+      plan-run-id: ${{ inputs.plan_run_id }}
+      github-token: ${{ github.token }}
 ```
+
+Set `plan-run-id` and provide a token with `actions:read` when apply is intentionally dispatched as a separate workflow run.

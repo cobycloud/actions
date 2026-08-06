@@ -22,6 +22,7 @@ class ProxmoxActionTests(unittest.TestCase):
         text = (ROOT / "actions/terraform-apply/action.yml").read_text(encoding="utf-8")
         self.assertIn("expected-source-sha", text)
         self.assertIn("expected-plan-sha256", text)
+        self.assertIn("plan-run-id", text)
         self.assertIn("sha256sum --check --strict", text)
 
 
