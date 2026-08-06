@@ -1,5 +1,5 @@
 name: Proxmox Command
-description: Run Proxmox plan or apply commands through caller-owned tooling.
+description: Low-level compatibility wrapper for caller-owned tooling. Prefer typed Proxmox actions for new workflows.
 inputs:
   working-directory:
     description: Directory containing Proxmox IaC or scripts.
@@ -32,7 +32,12 @@ runs:
     - name: Run Proxmox command
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: ${{ inputs.command }}
+      env:
+        PROXMOX_CALLER_COMMAND: ${{ inputs.command }}
+      run: |
+        set -euo pipefail
+        echo "::warning::proxmox-command is a low-level compatibility surface; new workflows should use typed API actions"
+        bash -euo pipefail -c "$PROXMOX_CALLER_COMMAND"
 
     - name: Upload Proxmox output
       if: ${{ inputs.upload-artifact-path != '' }}

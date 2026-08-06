@@ -1,11 +1,11 @@
 # Terraform Plan
 
-`actions/terraform-plan` sets up Terraform, runs init/validate/plan, and uploads the generated plan artifact.
+`actions/terraform-plan` sets up Terraform, runs init/validate/plan, and uploads the generated binary plan with immutable provenance metadata.
 
 ## Purpose
 
 - Standardize Terraform pre-apply gates.
-- Preserve a binary or text plan artifact for review or downstream apply jobs.
+- Preserve a binary plan and metadata containing its SHA-256, source commit, provider lock checksum, and Terraform version.
 - Keep backend/provider credentials owned by the caller workflow environment.
 
 ## Dependencies
@@ -28,3 +28,5 @@ jobs:
       working-directory: infra/prod
       plan-command: terraform plan -out=tfplan
 ```
+
+Pass the emitted `plan-sha256` and `source-sha` outputs to the separately approved apply job. Artifacts are retained for 14 days by default.

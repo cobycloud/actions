@@ -43,6 +43,7 @@ This repository provides reusable GitHub Actions and reusable workflows for comm
 | [`docs/actions/terraform-plan.md`](docs/actions/terraform-plan.md) | Run Terraform init, validate, plan, and upload the plan artifact. |
 | [`docs/actions/terraform-apply.md`](docs/actions/terraform-apply.md) | Run Terraform apply with optional plan artifact download. |
 | [`docs/actions/proxmox-command.md`](docs/actions/proxmox-command.md) | Run Proxmox plan/apply commands through caller-owned tooling. |
+| [`docs/actions/proxmox-api.md`](docs/actions/proxmox-api.md) | Make typed TLS-verified Proxmox API, task-wait, and power requests. |
 | [`docs/actions/docs-build.md`](docs/actions/docs-build.md) | Build documentation and upload generated site artifacts. |
 | [`docs/actions/pages-deploy.md`](docs/actions/pages-deploy.md) | Upload and deploy GitHub Pages artifacts. |
 | [`docs/actions/static-app-build.md`](docs/actions/static-app-build.md) | Build static apps and upload generated output. |

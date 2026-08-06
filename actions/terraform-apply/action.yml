@@ -1,5 +1,5 @@
 name: Terraform Apply
-description: Set up Terraform and apply a plan or caller-provided apply command.
+description: Verify and apply an immutable Terraform plan artifact.
 inputs:
   working-directory:
     description: Directory containing Terraform configuration.
@@ -16,15 +16,21 @@ inputs:
   apply-command:
     description: Terraform apply command.
     required: false
-    default: terraform apply -auto-approve
+    default: terraform apply -auto-approve tfplan
   plan-artifact-name:
-    description: Optional plan artifact name to download before apply.
+    description: Reviewed plan artifact name to download before apply.
     required: false
-    default: ""
+    default: terraform-plan
   plan-path:
-    description: Optional downloaded plan path.
+    description: Downloaded binary plan path.
     required: false
     default: tfplan
+  expected-source-sha:
+    description: Required Git commit SHA that created the plan.
+    required: true
+  expected-plan-sha256:
+    description: Required SHA-256 digest emitted by terraform-plan.
+    required: true
 runs:
   using: composite
   steps:
@@ -34,11 +40,28 @@ runs:
         terraform_version: ${{ inputs.terraform-version }}
 
     - name: Download Terraform plan
-      if: ${{ inputs.plan-artifact-name != '' }}
       uses: actions/download-artifact@v4
       with:
         name: ${{ inputs.plan-artifact-name }}
         path: ${{ inputs.working-directory }}
+
+    - name: Verify plan provenance
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PLAN_PATH: ${{ inputs.plan-path }}
+        EXPECTED_SOURCE_SHA: ${{ inputs.expected-source-sha }}
+        EXPECTED_PLAN_SHA256: ${{ inputs.expected-plan-sha256 }}
+      run: |
+        set -euo pipefail
+        test -n "$EXPECTED_SOURCE_SHA"
+        test -n "$EXPECTED_PLAN_SHA256"
+        test -f "$PLAN_PATH"
+        test -f "${PLAN_PATH}.metadata.json"
+        test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+        test "$(jq -r .source_sha "${PLAN_PATH}.metadata.json")" = "$EXPECTED_SOURCE_SHA"
+        test "$(jq -r .plan_sha256 "${PLAN_PATH}.metadata.json")" = "$EXPECTED_PLAN_SHA256"
+        echo "$EXPECTED_PLAN_SHA256  $PLAN_PATH" | sha256sum --check --strict
 
     - name: Terraform init
       shell: bash
