@@ -1,0 +1,113 @@
+name: Remote Docker Compose Stack
+description: Transfer and operate a versioned Docker Compose release over pinned SSH.
+inputs:
+  ssh-target:
+    description: SSH target in user@host form.
+    required: true
+  source-directory:
+    description: Local directory containing the release files.
+    required: true
+  remote-directory:
+    description: Absolute remote root used for releases and the current symlink.
+    required: true
+  compose-file:
+    description: Compose filename relative to the release directory.
+    required: false
+    default: compose.yaml
+  project-name:
+    description: Stable Docker Compose project name.
+    required: true
+  operation:
+    description: config, deploy, start, stop, restart, status, logs, or rollback.
+    required: false
+    default: deploy
+  release-id:
+    description: Immutable release identifier; required for config, deploy, and rollback.
+    required: false
+    default: ""
+  remote-env-file:
+    description: Optional absolute path to an existing remote environment file.
+    required: false
+    default: ""
+  logs-output:
+    description: Local file receiving logs for the logs operation.
+    required: false
+    default: remote-compose.log
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        TARGET: ${{ inputs.ssh-target }}
+        SOURCE: ${{ inputs.source-directory }}
+        REMOTE_ROOT: ${{ inputs.remote-directory }}
+        COMPOSE_FILE: ${{ inputs.compose-file }}
+        PROJECT: ${{ inputs.project-name }}
+        OPERATION: ${{ inputs.operation }}
+        RELEASE_ID: ${{ inputs.release-id }}
+        REMOTE_ENV_FILE: ${{ inputs.remote-env-file }}
+        LOGS_OUTPUT: ${{ inputs.logs-output }}
+      run: |
+        set -euo pipefail
+
+        [[ "$TARGET" =~ ^[A-Za-z_][A-Za-z0-9._-]*@[A-Za-z0-9.-]+$ ]]
+        [[ "$REMOTE_ROOT" == /* ]]
+        [[ "$COMPOSE_FILE" =~ ^[A-Za-z0-9._/-]+$ ]]
+        [[ "$PROJECT" =~ ^[A-Za-z0-9][A-Za-z0-9_-]+$ ]]
+        [[ -z "$REMOTE_ENV_FILE" || "$REMOTE_ENV_FILE" == /* ]]
+        [[ "$RELEASE_ID" =~ ^[A-Za-z0-9._-]*$ ]]
+
+        ssh_args=(-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes)
+        ssh_remote=(ssh "${ssh_args[@]}" "$TARGET")
+
+        release_dir="$REMOTE_ROOT/releases/$RELEASE_ID"
+        compose_args=(--project-name "$PROJECT")
+        [[ -z "$REMOTE_ENV_FILE" ]] || compose_args+=(--env-file "$REMOTE_ENV_FILE")
+
+        remote_compose() {
+          local directory="$1"
+          shift
+          "${ssh_remote[@]}" sudo docker compose \
+            --project-directory "$directory" \
+            --file "$directory/$COMPOSE_FILE" \
+            "${compose_args[@]}" "$@"
+        }
+
+        case "$OPERATION" in
+          config|deploy)
+            [[ -d "$SOURCE" ]]
+            [[ -n "$RELEASE_ID" ]]
+            "${ssh_remote[@]}" test ! -e "$release_dir"
+            "${ssh_remote[@]}" mkdir -p "$release_dir"
+            tar -C "$SOURCE" -czf - . | "${ssh_remote[@]}" tar -C "$release_dir" -xzf -
+            remote_compose "$release_dir" config --quiet
+            if [[ "$OPERATION" == deploy ]]; then
+              remote_compose "$release_dir" pull
+              remote_compose "$release_dir" up -d --remove-orphans
+              "${ssh_remote[@]}" ln -sfn "$release_dir" "$REMOTE_ROOT/current"
+              printf '%s\n' "$RELEASE_ID" | "${ssh_remote[@]}" tee "$REMOTE_ROOT/current-release" >/dev/null
+            fi
+            ;;
+          rollback)
+            [[ -n "$RELEASE_ID" ]]
+            "${ssh_remote[@]}" test -f "$release_dir/$COMPOSE_FILE"
+            remote_compose "$release_dir" config --quiet
+            remote_compose "$release_dir" pull
+            remote_compose "$release_dir" up -d --remove-orphans
+            "${ssh_remote[@]}" ln -sfn "$release_dir" "$REMOTE_ROOT/current"
+            printf '%s\n' "$RELEASE_ID" | "${ssh_remote[@]}" tee "$REMOTE_ROOT/current-release" >/dev/null
+            ;;
+          start|stop|restart)
+            remote_compose "$REMOTE_ROOT/current" "$OPERATION"
+            ;;
+          status)
+            remote_compose "$REMOTE_ROOT/current" ps --format json
+            ;;
+          logs)
+            remote_compose "$REMOTE_ROOT/current" logs --no-color > "$LOGS_OUTPUT"
+            ;;
+          *)
+            echo "unsupported operation: $OPERATION" >&2
+            exit 2
+            ;;
+        esac
