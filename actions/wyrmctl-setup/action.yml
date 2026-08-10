@@ -4,7 +4,7 @@ inputs:
   version:
     description: Exact Wyrmctl version.
     required: false
-    default: "0.4.3"
+    default: "0.4.4"
   python-version:
     description: Python version.
     required: false
