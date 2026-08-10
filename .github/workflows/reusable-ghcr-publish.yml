@@ -155,4 +155,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           IMAGE: ${{ inputs.image }}@${{ steps.push.outputs.digest }}
         shell: bash
-        run: gh attestation verify "oci://$IMAGE" --repo "${{ github.repository }}"
+        run: >-
+          gh attestation verify "oci://$IMAGE"
+          --repo "${{ github.repository }}"
+          --bundle-from-oci
+          --signer-repo cobycloud/actions
