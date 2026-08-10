@@ -1,0 +1,41 @@
+name: Wyrmctl Plan
+description: Validate desired state and emit a commit-bound immutable Wyrmctl PlanArtifact.
+inputs:
+  desired-state: {description: Desired-state path, required: true}
+  owner: {description: Owner scope, required: true}
+  artifact-out: {description: Artifact output path, required: true}
+  repository: {description: Repository binding, required: true}
+  environment: {description: Environment binding, required: true}
+  commit: {description: Commit binding, required: true}
+  base-url: {description: Portwyrm API base URL, required: true}
+  identity: {description: Portwyrm automation identity, required: true}
+  secret: {description: Portwyrm automation secret, required: true}
+  certificate-mode: {description: Certificate reconcile policy, required: false, default: create}
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        NPM_BASE_URL: ${{ inputs.base-url }}
+        NPM_IDENTITY: ${{ inputs.identity }}
+        NPM_SECRET: ${{ inputs.secret }}
+        DESIRED_STATE: ${{ inputs.desired-state }}
+        OWNER: ${{ inputs.owner }}
+        ARTIFACT_OUT: ${{ inputs.artifact-out }}
+        REPOSITORY: ${{ inputs.repository }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        COMMIT: ${{ inputs.commit }}
+        CERTIFICATE_MODE: ${{ inputs.certificate-mode }}
+      run: |
+        set -euo pipefail
+        wyrmctl --output json validate "$DESIRED_STATE"
+        wyrmctl --output json plan "$DESIRED_STATE" \
+          --owner "$OWNER" \
+          --certificate-mode "$CERTIFICATE_MODE" \
+          --artifact-out "$ARTIFACT_OUT" \
+          --repository "$REPOSITORY" \
+          --environment "$ENVIRONMENT" \
+          --commit "$COMMIT" \
+          --validate-output
+        wyrmctl --output json artifact inspect "$ARTIFACT_OUT" --strict
+

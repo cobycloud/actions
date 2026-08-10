@@ -1,0 +1,42 @@
+name: Wyrmctl Apply
+description: Apply an exact reviewed Wyrmctl PlanArtifact and write structured evidence.
+inputs:
+  artifact: {description: Reviewed PlanArtifact path, required: true}
+  repository: {description: Repository binding, required: true}
+  environment: {description: Environment binding, required: true}
+  commit: {description: Commit binding, required: true}
+  base-url: {description: Portwyrm API base URL, required: true}
+  identity: {description: Portwyrm automation identity, required: true}
+  secret: {description: Portwyrm automation secret, required: true}
+  report: {description: Apply report path, required: false, default: wyrmctl-apply.json}
+  audit-log: {description: Audit log path, required: false, default: wyrmctl-audit.json}
+  rollback-plan: {description: Rollback plan path, required: false, default: wyrmctl-rollback.json}
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        NPM_BASE_URL: ${{ inputs.base-url }}
+        NPM_IDENTITY: ${{ inputs.identity }}
+        NPM_SECRET: ${{ inputs.secret }}
+        ARTIFACT: ${{ inputs.artifact }}
+        REPOSITORY: ${{ inputs.repository }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        COMMIT: ${{ inputs.commit }}
+        REPORT: ${{ inputs.report }}
+        AUDIT_LOG: ${{ inputs.audit-log }}
+        ROLLBACK_PLAN: ${{ inputs.rollback-plan }}
+      run: |
+        set -euo pipefail
+        wyrmctl --output json artifact inspect "$ARTIFACT" --strict
+        wyrmctl --output json apply \
+          --artifact "$ARTIFACT" \
+          --repository "$REPOSITORY" \
+          --environment "$ENVIRONMENT" \
+          --commit "$COMMIT" \
+          --report "$REPORT" \
+          --audit-log "$AUDIT_LOG" \
+          --rollback-plan "$ROLLBACK_PLAN" \
+          --validate-output
+        wyrmctl --output json health
+

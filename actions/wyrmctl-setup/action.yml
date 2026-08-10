@@ -1,0 +1,29 @@
+name: Wyrmctl Setup
+description: Install one pinned Wyrmctl release into an isolated uv environment.
+inputs:
+  version:
+    description: Exact Wyrmctl version.
+    required: false
+    default: "0.4.1"
+  python-version:
+    description: Python version.
+    required: false
+    default: "3.12"
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v7
+    - uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+    - shell: bash
+      env:
+        WYRMCTL_VERSION: ${{ inputs.version }}
+        PYTHON_VERSION: ${{ inputs.python-version }}
+      run: |
+        set -euo pipefail
+        uv venv "$RUNNER_TEMP/wyrmctl-venv" --python "$PYTHON_VERSION"
+        uv pip install --python "$RUNNER_TEMP/wyrmctl-venv/bin/python" "wyrmctl==$WYRMCTL_VERSION"
+        echo "$RUNNER_TEMP/wyrmctl-venv/bin" >> "$GITHUB_PATH"
+        "$RUNNER_TEMP/wyrmctl-venv/bin/wyrmctl" version --json
+
