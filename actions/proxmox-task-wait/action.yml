@@ -1,0 +1,42 @@
+name: Proxmox Task Wait
+description: Poll a Proxmox UPID until it succeeds, fails, or times out.
+inputs:
+  api-url: {description: Proxmox API base URL., required: true}
+  token-id: {description: Proxmox API token ID., required: true}
+  token-secret: {description: Proxmox API token secret., required: true}
+  ca-file: {description: CA certificate file., required: true}
+  node: {description: Proxmox node name., required: true}
+  upid: {description: Proxmox task UPID., required: true}
+  timeout-seconds: {description: Maximum wait., required: false, default: "900"}
+runs:
+  using: composite
+  steps:
+    - name: Wait for Proxmox task
+      shell: bash
+      env:
+        PVE_API_URL: ${{ inputs.api-url }}
+        PVE_API_TOKEN_ID: ${{ inputs.token-id }}
+        PVE_API_TOKEN_SECRET: ${{ inputs.token-secret }}
+        PVE_CA_FILE: ${{ inputs.ca-file }}
+        PVE_NODE: ${{ inputs.node }}
+        PVE_UPID: ${{ inputs.upid }}
+        PVE_TIMEOUT_SECONDS: ${{ inputs.timeout-seconds }}
+      run: |
+        set -euo pipefail
+        test -s "$PVE_CA_FILE"
+        deadline=$((SECONDS + PVE_TIMEOUT_SECONDS))
+        encoded_upid="$(jq -rn --arg value "$PVE_UPID" '$value|@uri')"
+        while (( SECONDS < deadline )); do
+          response="$(curl --fail-with-body --silent --show-error --cacert "$PVE_CA_FILE" \
+            --header "Authorization: PVEAPIToken=${PVE_API_TOKEN_ID}=${PVE_API_TOKEN_SECRET}" \
+            "${PVE_API_URL%/}/nodes/${PVE_NODE}/tasks/${encoded_upid}/status")"
+          status="$(jq -r .data.status <<<"$response")"
+          if [[ "$status" == stopped ]]; then
+            exit_status="$(jq -r .data.exitstatus <<<"$response")"
+            [[ "$exit_status" == OK ]] || { echo "PVE task failed: $exit_status" >&2; exit 1; }
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "PVE task timed out" >&2
+        exit 1

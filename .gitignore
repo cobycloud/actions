@@ -1,5 +1,6 @@
 /reports
 /scripts
+__pycache__/
 /.github/workflows/*
 !/.github/
 !/.github/workflows/

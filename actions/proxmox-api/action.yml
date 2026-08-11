@@ -1,0 +1,63 @@
+name: Proxmox API
+description: Make one TLS-verified Proxmox API request and preserve a redacted response artifact.
+inputs:
+  api-url:
+    description: Proxmox API base URL ending in /api2/json.
+    required: true
+  token-id:
+    description: Proxmox API token ID.
+    required: true
+  token-secret:
+    description: Proxmox API token secret.
+    required: true
+  ca-file:
+    description: CA certificate file used to verify Proxmox TLS.
+    required: true
+  method:
+    description: HTTP method (GET, POST, PUT, or DELETE).
+    required: false
+    default: GET
+  path:
+    description: API path beneath the base URL.
+    required: true
+  form-data:
+    description: Optional URL-encoded request body. Never place secrets here.
+    required: false
+    default: ""
+  output-file:
+    description: Response JSON output file.
+    required: false
+    default: proxmox-response.json
+outputs:
+  data:
+    description: Compact JSON from the PVE data envelope.
+    value: ${{ steps.request.outputs.data }}
+runs:
+  using: composite
+  steps:
+    - name: Call Proxmox API
+      id: request
+      shell: bash
+      env:
+        PVE_API_URL: ${{ inputs.api-url }}
+        PVE_API_TOKEN_ID: ${{ inputs.token-id }}
+        PVE_API_TOKEN_SECRET: ${{ inputs.token-secret }}
+        PVE_CA_FILE: ${{ inputs.ca-file }}
+        PVE_METHOD: ${{ inputs.method }}
+        PVE_PATH: ${{ inputs.path }}
+        PVE_FORM_DATA: ${{ inputs.form-data }}
+        PVE_OUTPUT_FILE: ${{ inputs.output-file }}
+      run: |
+        set -euo pipefail
+        case "$PVE_METHOD" in GET|POST|PUT|DELETE) ;; *) echo "unsupported method" >&2; exit 2;; esac
+        [[ "$PVE_PATH" == /* ]] || { echo "path must begin with /" >&2; exit 2; }
+        test -s "$PVE_CA_FILE"
+        args=(--fail-with-body --silent --show-error --cacert "$PVE_CA_FILE" --request "$PVE_METHOD")
+        args+=(--header "Authorization: PVEAPIToken=${PVE_API_TOKEN_ID}=${PVE_API_TOKEN_SECRET}")
+        if [[ -n "$PVE_FORM_DATA" ]]; then
+          args+=(--header "Content-Type: application/x-www-form-urlencoded" --data "$PVE_FORM_DATA")
+        fi
+        curl "${args[@]}" "${PVE_API_URL%/}${PVE_PATH}" > "$PVE_OUTPUT_FILE"
+        jq -e 'has("data")' "$PVE_OUTPUT_FILE" >/dev/null
+        compact="$(jq -c .data "$PVE_OUTPUT_FILE")"
+        echo "data=$compact" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,62 @@
+name: Proxmox Power
+description: Perform a typed VM start, graceful shutdown, or explicitly approved hard stop and wait for completion.
+inputs:
+  api-url: {description: Proxmox API base URL., required: true}
+  token-id: {description: Proxmox API token ID., required: true}
+  token-secret: {description: Proxmox API token secret., required: true}
+  ca-file: {description: CA certificate file., required: true}
+  node: {description: Proxmox node name., required: true}
+  vm-id: {description: Numeric VM ID., required: true}
+  action: {description: start, shutdown, or stop., required: true}
+  allow-hard-stop: {description: Must be true when action is stop., required: false, default: "false"}
+runs:
+  using: composite
+  steps:
+    - name: Validate typed power request
+      shell: bash
+      env:
+        PVE_VM_ID: ${{ inputs.vm-id }}
+        PVE_POWER_ACTION: ${{ inputs.action }}
+        ALLOW_HARD_STOP: ${{ inputs.allow-hard-stop }}
+      run: |
+        set -euo pipefail
+        [[ "$PVE_VM_ID" =~ ^[0-9]+$ ]]
+        case "$PVE_POWER_ACTION" in
+          start|shutdown) ;;
+          stop) [[ "$ALLOW_HARD_STOP" == true ]] || { echo "hard stop requires allow-hard-stop=true" >&2; exit 2; } ;;
+          *) echo "unsupported power action" >&2; exit 2 ;;
+        esac
+    - name: Request and verify power operation
+      shell: bash
+      env:
+        PVE_API_URL: ${{ inputs.api-url }}
+        PVE_API_TOKEN_ID: ${{ inputs.token-id }}
+        PVE_API_TOKEN_SECRET: ${{ inputs.token-secret }}
+        PVE_CA_FILE: ${{ inputs.ca-file }}
+        PVE_NODE: ${{ inputs.node }}
+        PVE_VM_ID: ${{ inputs.vm-id }}
+        PVE_POWER_ACTION: ${{ inputs.action }}
+      run: |
+        set -euo pipefail
+        test -s "$PVE_CA_FILE"
+        response="$(curl --fail-with-body --silent --show-error --cacert "$PVE_CA_FILE" \
+          --request POST \
+          --header "Authorization: PVEAPIToken=${PVE_API_TOKEN_ID}=${PVE_API_TOKEN_SECRET}" \
+          "${PVE_API_URL%/}/nodes/${PVE_NODE}/qemu/${PVE_VM_ID}/status/${PVE_POWER_ACTION}")"
+        upid="$(jq -er .data <<<"$response")"
+        encoded_upid="$(jq -rn --arg value "$upid" '$value|@uri')"
+        deadline=$((SECONDS + 900))
+        while (( SECONDS < deadline )); do
+          status_response="$(curl --fail-with-body --silent --show-error --cacert "$PVE_CA_FILE" \
+            --header "Authorization: PVEAPIToken=${PVE_API_TOKEN_ID}=${PVE_API_TOKEN_SECRET}" \
+            "${PVE_API_URL%/}/nodes/${PVE_NODE}/tasks/${encoded_upid}/status")"
+          status="$(jq -r .data.status <<<"$status_response")"
+          if [[ "$status" == stopped ]]; then
+            exit_status="$(jq -r .data.exitstatus <<<"$status_response")"
+            [[ "$exit_status" == OK ]] || { echo "PVE task failed: $exit_status" >&2; exit 1; }
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "PVE power task timed out" >&2
+        exit 1

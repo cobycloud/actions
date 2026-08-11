@@ -1,5 +1,5 @@
 name: Terraform Plan
-description: Set up Terraform, run init/validate/plan, and upload a plan artifact.
+description: Set up Terraform, run init/validate/plan, and upload an immutable plan with provenance metadata.
 inputs:
   working-directory:
     description: Directory containing Terraform configuration.
@@ -29,6 +29,13 @@ inputs:
     description: Uploaded plan artifact name.
     required: false
     default: terraform-plan
+outputs:
+  plan-sha256:
+    description: SHA-256 digest of the binary Terraform plan.
+    value: ${{ steps.metadata.outputs.plan-sha256 }}
+  source-sha:
+    description: Git commit SHA used to create the plan.
+    value: ${{ steps.metadata.outputs.source-sha }}
 runs:
   using: composite
   steps:
@@ -53,9 +60,38 @@ runs:
       working-directory: ${{ inputs.working-directory }}
       run: ${{ inputs.plan-command }}
 
+    - name: Record immutable plan metadata
+      id: metadata
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PLAN_PATH: ${{ inputs.plan-path }}
+      run: |
+        set -euo pipefail
+        test -f "$PLAN_PATH"
+        plan_sha="$(sha256sum "$PLAN_PATH" | awk '{print $1}')"
+        source_sha="$(git rev-parse HEAD)"
+        lock_sha="absent"
+        if [[ -f .terraform.lock.hcl ]]; then
+          lock_sha="$(sha256sum .terraform.lock.hcl | awk '{print $1}')"
+        fi
+        terraform_version="$(terraform version -json | jq -r .terraform_version)"
+        jq -n \
+          --arg plan_sha256 "$plan_sha" \
+          --arg source_sha "$source_sha" \
+          --arg lock_sha256 "$lock_sha" \
+          --arg terraform_version "$terraform_version" \
+          '{plan_sha256:$plan_sha256,source_sha:$source_sha,lock_sha256:$lock_sha256,terraform_version:$terraform_version}' \
+          > "${PLAN_PATH}.metadata.json"
+        echo "plan-sha256=$plan_sha" >> "$GITHUB_OUTPUT"
+        echo "source-sha=$source_sha" >> "$GITHUB_OUTPUT"
+
     - name: Upload Terraform plan
       uses: actions/upload-artifact@v6
       with:
         name: ${{ inputs.artifact-name }}
-        path: ${{ inputs.working-directory }}/${{ inputs.plan-path }}
+        path: |
+          ${{ inputs.working-directory }}/${{ inputs.plan-path }}
+          ${{ inputs.working-directory }}/${{ inputs.plan-path }}.metadata.json
         if-no-files-found: error
+        retention-days: 14

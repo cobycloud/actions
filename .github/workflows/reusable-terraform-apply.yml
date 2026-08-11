@@ -30,14 +30,25 @@ on:
       plan-artifact-name:
         type: string
         required: false
-        default: ""
+        default: terraform-plan
       plan-path:
         type: string
         required: false
         default: tfplan
+      expected-source-sha:
+        type: string
+        required: true
+      expected-plan-sha256:
+        type: string
+        required: true
+      plan-run-id:
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   terraform-apply:
@@ -54,3 +65,7 @@ jobs:
           apply-command: ${{ inputs.apply-command }}
           plan-artifact-name: ${{ inputs.plan-artifact-name }}
           plan-path: ${{ inputs.plan-path }}
+          expected-source-sha: ${{ inputs.expected-source-sha }}
+          expected-plan-sha256: ${{ inputs.expected-plan-sha256 }}
+          plan-run-id: ${{ inputs.plan-run-id }}
+          github-token: ${{ github.token }}
