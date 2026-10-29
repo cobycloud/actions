@@ -20,7 +20,6 @@ steps:
       compose-command: docker compose
       service: backend
       operation: restart
-      prune: "true"
 ```
 
 ## Logs Example
@@ -43,7 +42,7 @@ steps:
 | `compose-file` | empty | Optional compose file passed as `-f`. |
 | `service` | required | Service name. |
 | `operation` | `restart` | One of `restart`, `rebuild`, or `logs`. |
-| `prune` | `false` | Runs `docker system prune -af` before rebuild/restart when true. |
+| `prune` | `false` | Deprecated compatibility input. Never enable it on a shared deployment host. |
 | `logs-output` | `compose-service.log` | Output path for `logs` operation. |
 
 ## Dependencies
@@ -52,6 +51,14 @@ steps:
 - Docker
 - Docker Compose
 - A runner with access to the deployment environment
+
+## Shared-host safety
+
+Do not set `prune: "true"` on VM102, VM103, VM104, or another multi-tenant deployment host.
+`docker system prune -af` is daemon-wide: one repository can delete build cache and unused images
+owned by unrelated workloads. Use project-scoped Compose cleanup and normal Docker image-retention
+operations instead. Mutating workflows must also hold the host's
+[`host-mutation-lock`](host-mutation-lock.md) lease for their full mutation window.
 
 ## Related Reusable Workflow
 
