@@ -7,9 +7,36 @@ import json
 import os
 import re
 import shutil
+import signal
 import sys
 import time
 from pathlib import Path
+
+
+_INTERRUPTED = False
+_OWNED_LOCK_PATH: Path | None = None
+_OWNED_TOKEN = ""
+
+
+def handle_termination(_signum: int, _frame: object) -> None:
+    """Stop a canceled waiter from leaving a lease acquired during shutdown."""
+    global _INTERRUPTED
+    _INTERRUPTED = True
+    if _OWNED_LOCK_PATH is None or not _OWNED_TOKEN:
+        return
+    if read_text(_OWNED_LOCK_PATH / "owner-token") != _OWNED_TOKEN:
+        return
+    try:
+        (_OWNED_LOCK_PATH / "owner-token").unlink(missing_ok=True)
+        (_OWNED_LOCK_PATH / "acquired-at").unlink(missing_ok=True)
+        _OWNED_LOCK_PATH.rmdir()
+    except OSError:
+        pass
+
+
+def raise_if_interrupted() -> None:
+    if _INTERRUPTED:
+        raise InterruptedError("lease acquisition interrupted")
 
 
 def required(name: str) -> str:
@@ -80,14 +107,19 @@ def acquire(
     stale_seconds: int,
     poll_seconds: int,
 ) -> None:
+    global _OWNED_LOCK_PATH, _OWNED_TOKEN
     deadline = time.monotonic() + timeout_seconds
     while True:
+        raise_if_interrupted()
         try:
             lock_path.mkdir()
+            _OWNED_LOCK_PATH = lock_path
+            _OWNED_TOKEN = owner
             (lock_path / "owner-token").write_text(f"{owner}\n", encoding="utf-8")
             (lock_path / "acquired-at").write_text(
                 f"{int(time.time())}\n", encoding="utf-8"
             )
+            raise_if_interrupted()
             emit_output(lock_path, owner)
             print(f"Acquired host mutation lease: {lock_path.stem}")
             return
@@ -127,6 +159,8 @@ def acquire(
 
 def main() -> int:
     try:
+        signal.signal(signal.SIGINT, handle_termination)
+        signal.signal(signal.SIGTERM, handle_termination)
         operation = required("LOCK_OPERATION")
         lock_name = required("LOCK_NAME")
         if operation not in {"acquire", "release"}:
@@ -154,7 +188,7 @@ def main() -> int:
                 poll_seconds,
             )
         return 0
-    except (OSError, RuntimeError, TimeoutError, ValueError) as exc:
+    except (InterruptedError, OSError, RuntimeError, TimeoutError, ValueError) as exc:
         print(json.dumps({"ok": False, "error": str(exc)}), file=sys.stderr)
         return 1
 

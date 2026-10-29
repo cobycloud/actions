@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import os
 import subprocess
 import sys
@@ -10,6 +11,15 @@ from pathlib import Path
 
 
 SCRIPT = Path(__file__).with_name("lock.py")
+
+
+def load_lock_module():
+    spec = importlib.util.spec_from_file_location("host_mutation_lock", SCRIPT)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("could not load host mutation lock module")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class HostMutationLockTests(unittest.TestCase):
@@ -63,6 +73,22 @@ class HostMutationLockTests(unittest.TestCase):
         (lock_path / "owner-token").write_text("owner-active\n", encoding="utf-8")
         (lock_path / "acquired-at").write_text(f"{int(time.time())}\n", encoding="utf-8")
         self.run_lock("acquire", "owner-new", expect=1)
+
+    def test_termination_releases_lease_won_during_cancellation(self) -> None:
+        module = load_lock_module()
+        lock_path = self.lock_root / "vm104.lock"
+        lock_path.mkdir(parents=True)
+        (lock_path / "owner-token").write_text("cancelled-owner\n", encoding="utf-8")
+        (lock_path / "acquired-at").write_text(
+            f"{int(time.time())}\n", encoding="utf-8"
+        )
+        module._OWNED_LOCK_PATH = lock_path
+        module._OWNED_TOKEN = "cancelled-owner"
+
+        module.handle_termination(15, None)
+
+        self.assertTrue(module._INTERRUPTED)
+        self.assertFalse(lock_path.exists())
 
 
 if __name__ == "__main__":
