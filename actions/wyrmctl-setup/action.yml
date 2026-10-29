@@ -23,7 +23,10 @@ runs:
       run: |
         set -euo pipefail
         uv venv "$RUNNER_TEMP/wyrmctl-venv" --python "$PYTHON_VERSION"
-        uv pip install --python "$RUNNER_TEMP/wyrmctl-venv/bin/python" "wyrmctl==$WYRMCTL_VERSION"
+        uv pip install \
+          --refresh-package wyrmctl \
+          --python "$RUNNER_TEMP/wyrmctl-venv/bin/python" \
+          "wyrmctl==$WYRMCTL_VERSION"
         echo "$RUNNER_TEMP/wyrmctl-venv/bin" >> "$GITHUB_PATH"
         "$RUNNER_TEMP/wyrmctl-venv/bin/wyrmctl" version --json
 
