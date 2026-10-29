@@ -1,0 +1,24 @@
+name: Test GHCR release tags
+
+on:
+  push:
+    paths:
+      - .github/workflows/reusable-ghcr-publish.yml
+      - .github/workflows/test-ghcr-release-tags.yml
+      - tests/test_ghcr_release_tags.py
+  pull_request:
+    paths:
+      - .github/workflows/reusable-ghcr-publish.yml
+      - .github/workflows/test-ghcr-release-tags.yml
+      - tests/test_ghcr_release_tags.py
+
+permissions:
+  contents: read
+
+jobs:
+  release-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test release tag classification and alias policy
+        run: python3 -m unittest discover -s tests -p test_ghcr_release_tags.py -v
