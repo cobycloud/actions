@@ -67,6 +67,7 @@ This repository provides reusable GitHub Actions and reusable workflows for comm
 | [`docs/actions/ssot-certification-profile.md`](docs/actions/ssot-certification-profile.md) | Run SSOT certification profile checks. |
 | [`docs/actions/ssot-release-certify.md`](docs/actions/ssot-release-certify.md) | Certify, promote, or publish SSOT release entities. |
 | [`docs/actions/docker-compose-service.md`](docs/actions/docker-compose-service.md) | Restart, rebuild, or collect logs for one Docker Compose service. |
+| [`docs/actions/host-mutation-lock.md`](docs/actions/host-mutation-lock.md) | Serialize host mutations across repositories sharing a self-hosted runner. |
 | [docs/actions/docker-container-network.md](docs/actions/docker-container-network.md) | Attach or detach a container from an application-specific Docker network. |
 | [docs/actions/pypi-publish.md](docs/actions/pypi-publish.md) | Publish Python distributions with API-token, trusted-publishing, or token-or-trusted mode. |
 | [docs/actions/ghcr-publish.md](docs/actions/ghcr-publish.md) | Publish signed, attested, multi-platform OCI images to GHCR. |
@@ -147,6 +148,7 @@ Use composite actions when a repository already owns its workflow shape and only
 | [`./actions/ssot-certification-profile`](actions/ssot-certification-profile/action.yml) | [`docs/actions/ssot-certification-profile.md`](docs/actions/ssot-certification-profile.md) | Run SSOT certification profile checks. |
 | [`./actions/ssot-release-certify`](actions/ssot-release-certify/action.yml) | [`docs/actions/ssot-release-certify.md`](docs/actions/ssot-release-certify.md) | Certify, promote, or publish SSOT release entities. |
 | [`./actions/docker-compose-service`](actions/docker-compose-service/action.yml) | [`docs/actions/docker-compose-service.md`](docs/actions/docker-compose-service.md) | Restart, rebuild, or collect logs for one Docker Compose service. |
+| [`./actions/host-mutation-lock`](actions/host-mutation-lock/action.yml) | [`docs/actions/host-mutation-lock.md`](docs/actions/host-mutation-lock.md) | Acquire or release a bounded cross-repository host mutation lease. |
 | [docs/actions/docker-container-network.md](docs/actions/docker-container-network.md) | Attach or detach a container from an application-specific Docker network. |
 | [`./actions/pypi-publish`](actions/pypi-publish/action.yml) | [`docs/actions/pypi-publish.md`](docs/actions/pypi-publish.md) | Publish Python distributions with API-token, trusted-publishing, or token-or-trusted mode. |
 | [`./actions/pypi-token-publish`](actions/pypi-token-publish/action.yml) | [`docs/actions/pypi-token-publish.md`](docs/actions/pypi-token-publish.md) | Publish Python distributions with a PyPI API token only. |

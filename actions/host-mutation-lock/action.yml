@@ -1,0 +1,52 @@
+name: Host Mutation Lock
+description: Acquire or release a bounded cross-repository mutation lease on a self-hosted runner.
+inputs:
+  operation:
+    description: acquire or release
+    required: true
+  lock-name:
+    description: Stable host lane name such as vm104.
+    required: true
+  timeout-seconds:
+    description: Maximum time to wait while acquiring the lease.
+    required: false
+    default: "1800"
+  stale-seconds:
+    description: Age after which an abandoned lease may be recovered.
+    required: false
+    default: "7200"
+  poll-seconds:
+    description: Delay between acquisition attempts.
+    required: false
+    default: "2"
+  lock-root:
+    description: Host-local directory shared by all runner services on the machine.
+    required: false
+    default: /tmp/cobycloud-actions-host-locks
+  owner-token:
+    description: Optional stable owner token. Defaults to repository, run, attempt, and job identity.
+    required: false
+    default: ""
+outputs:
+  lock-path:
+    description: Absolute path of the host lease directory.
+    value: ${{ steps.lock.outputs.lock-path }}
+  owner-token:
+    description: Identity that owns or released the lease.
+    value: ${{ steps.lock.outputs.owner-token }}
+runs:
+  using: composite
+  steps:
+    - id: lock
+      name: ${{ inputs.operation }} host mutation lease
+      shell: bash
+      env:
+        LOCK_OPERATION: ${{ inputs.operation }}
+        LOCK_NAME: ${{ inputs.lock-name }}
+        LOCK_TIMEOUT_SECONDS: ${{ inputs.timeout-seconds }}
+        LOCK_STALE_SECONDS: ${{ inputs.stale-seconds }}
+        LOCK_POLL_SECONDS: ${{ inputs.poll-seconds }}
+        LOCK_ROOT: ${{ inputs.lock-root }}
+        LOCK_OWNER_TOKEN: ${{ inputs.owner-token }}
+      run: python3 "$GITHUB_ACTION_PATH/lock.py"
+
