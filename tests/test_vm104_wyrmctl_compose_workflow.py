@@ -13,6 +13,8 @@ def test_vm104_workflow_enforces_runner_and_network_boundaries() -> None:
     assert "has(\"private\") and has(\"edge\")" in text
     assert 'lock-name: vm104' in text
     assert "PORTWYRM_NETWORK: portwyrm-edge" in text
+    assert 'env-file: {type: string, required: false, default: ""}' in text
+    assert 'test -r "$ENV_FILE"' in text
 
 
 def test_vm104_workflow_preserves_reviewed_plan_boundary() -> None:
