@@ -35,6 +35,13 @@ jobs:
       artifact-name: ${{ steps.artifact.outputs.name }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+      - name: Checkout shared deployment actions
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+        with:
+          repository: cobycloud/actions
+          ref: 93720da971c3f0fae4f0f62f2ac20ad69690ff3b
+          path: .cobycloud-actions
+          persist-credentials: false
       - if: ${{ inputs.tigrbl-ref != '' }}
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
         with:
@@ -49,7 +56,7 @@ jobs:
           ref: ${{ inputs.tigrcorn-ref }}
           path: .deployment-dependencies/tigrcorn
           persist-credentials: false
-      - uses: ./actions/wyrmctl-setup
+      - uses: ./.cobycloud-actions/actions/wyrmctl-setup
       - name: Validate VM104 topology and tenant isolation
         shell: bash
         env:
@@ -89,7 +96,7 @@ jobs:
           echo "secret=$secret" >> "$GITHUB_OUTPUT"
       - name: Prepare deployment evidence
         run: mkdir -p deployment-evidence
-      - uses: ./actions/wyrmctl-plan
+      - uses: ./.cobycloud-actions/actions/wyrmctl-plan
         with:
           desired-state: ${{ inputs.desired-state }}
           owner: ${{ inputs.owner }}
@@ -121,6 +128,13 @@ jobs:
     environment: deployment
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+      - name: Checkout shared deployment actions
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+        with:
+          repository: cobycloud/actions
+          ref: 93720da971c3f0fae4f0f62f2ac20ad69690ff3b
+          path: .cobycloud-actions
+          persist-credentials: false
       - if: ${{ inputs.tigrbl-ref != '' }}
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
         with:
@@ -135,7 +149,7 @@ jobs:
           ref: ${{ inputs.tigrcorn-ref }}
           path: .deployment-dependencies/tigrcorn
           persist-credentials: false
-      - uses: ./actions/wyrmctl-setup
+      - uses: ./.cobycloud-actions/actions/wyrmctl-setup
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ needs.plan.outputs.artifact-name }}
@@ -155,7 +169,7 @@ jobs:
           echo "identity=$identity" >> "$GITHUB_OUTPUT"
           echo "secret=$secret" >> "$GITHUB_OUTPUT"
       - name: Acquire VM104 mutation lease
-        uses: ./actions/host-mutation-lock
+        uses: ./.cobycloud-actions/actions/host-mutation-lock
         with:
           operation: acquire
           lock-name: vm104
@@ -175,7 +189,7 @@ jobs:
           compose+=(--file "$COMPOSE_FILE")
           "${compose[@]}" build --pull
           "${compose[@]}" up --detach --remove-orphans --force-recreate
-      - uses: ./actions/wyrmctl-apply
+      - uses: ./.cobycloud-actions/actions/wyrmctl-apply
         with:
           artifact: deployment-evidence/wyrmctl-plan.json
           repository: ${{ github.repository }}
@@ -219,7 +233,7 @@ jobs:
           retention-days: 30
       - name: Release VM104 mutation lease
         if: always()
-        uses: ./actions/host-mutation-lock
+        uses: ./.cobycloud-actions/actions/host-mutation-lock
         with:
           operation: release
           lock-name: vm104

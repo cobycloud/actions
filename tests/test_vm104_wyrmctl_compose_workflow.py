@@ -22,6 +22,15 @@ def test_vm104_workflow_preserves_reviewed_plan_boundary() -> None:
 
     assert "sha256sum deployment-evidence/wyrmctl-plan.json" in text
     assert "sha256sum --check deployment-evidence/plan.sha256" in text
-    assert "./actions/wyrmctl-plan" in text
-    assert "./actions/wyrmctl-apply" in text
-    assert "./actions/host-mutation-lock" in text
+    assert "./.cobycloud-actions/actions/wyrmctl-plan" in text
+    assert "./.cobycloud-actions/actions/wyrmctl-apply" in text
+    assert "./.cobycloud-actions/actions/host-mutation-lock" in text
+
+
+def test_vm104_workflow_checks_out_shared_actions_before_local_use() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert text.count("repository: cobycloud/actions") == 2
+    assert text.count("path: .cobycloud-actions") == 2
+    assert text.count("persist-credentials: false") >= 2
+    assert text.count("./.cobycloud-actions/actions/wyrmctl-setup") == 2
