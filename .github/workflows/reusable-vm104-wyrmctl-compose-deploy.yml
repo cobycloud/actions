@@ -57,6 +57,17 @@ jobs:
           path: .deployment-dependencies/tigrcorn
           persist-credentials: false
       - uses: ./.cobycloud-actions/actions/wyrmctl-setup
+      - name: Resolve Portwyrm runtime context
+        shell: bash
+        env:
+          REQUESTED_PUBLIC_HOST: ${{ inputs.public-host }}
+        run: |
+          set -euo pipefail
+          cert_path="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/etc/letsencrypt"}}{{.Source}}{{end}}{{end}}' portwyrm-portwyrm-1)"
+          test -n "$cert_path"
+          test -d "$cert_path"
+          echo "PUBLIC_HOST=$REQUESTED_PUBLIC_HOST" >> "$GITHUB_ENV"
+          echo "PORTWYRM_CERT_PATH=$cert_path" >> "$GITHUB_ENV"
       - name: Validate VM104 topology and tenant isolation
         shell: bash
         env:
@@ -150,6 +161,17 @@ jobs:
           path: .deployment-dependencies/tigrcorn
           persist-credentials: false
       - uses: ./.cobycloud-actions/actions/wyrmctl-setup
+      - name: Resolve Portwyrm runtime context
+        shell: bash
+        env:
+          REQUESTED_PUBLIC_HOST: ${{ inputs.public-host }}
+        run: |
+          set -euo pipefail
+          cert_path="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/etc/letsencrypt"}}{{.Source}}{{end}}{{end}}' portwyrm-portwyrm-1)"
+          test -n "$cert_path"
+          test -d "$cert_path"
+          echo "PUBLIC_HOST=$REQUESTED_PUBLIC_HOST" >> "$GITHUB_ENV"
+          echo "PORTWYRM_CERT_PATH=$cert_path" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ needs.plan.outputs.artifact-name }}
@@ -224,6 +246,17 @@ jobs:
             "https://${PUBLIC_HOST}${VERIFY_PATH}" >/dev/null
           openssl s_client -connect "${PUBLIC_HOST}:443" -servername "$PUBLIC_HOST" </dev/null 2>/dev/null \
             | openssl x509 -noout -ext subjectAltName | grep -Fq "DNS:$PUBLIC_HOST"
+      - name: Collect container diagnostics
+        if: failure()
+        shell: bash
+        env:
+          CONTAINERS_JSON: ${{ inputs.containers-json }}
+        run: |
+          mkdir -p deployment-evidence/container-logs
+          jq -r '.[]' <<<"$CONTAINERS_JSON" | while read -r container; do
+            docker inspect "$container" > "deployment-evidence/container-logs/${container}.inspect.json" 2>&1 || true
+            docker logs --tail 300 "$container" > "deployment-evidence/container-logs/${container}.log" 2>&1 || true
+          done
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
