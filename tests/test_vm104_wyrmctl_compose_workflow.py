@@ -34,3 +34,20 @@ def test_vm104_workflow_checks_out_shared_actions_before_local_use() -> None:
     assert text.count("path: .cobycloud-actions") == 2
     assert text.count("persist-credentials: false") >= 2
     assert text.count("./.cobycloud-actions/actions/wyrmctl-setup") == 2
+
+
+def test_vm104_workflow_materializes_portwyrm_runtime_context() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert text.count("Resolve Portwyrm runtime context") == 2
+    assert text.count('eq .Destination "/etc/letsencrypt"') == 2
+    assert text.count('echo "PUBLIC_HOST=$REQUESTED_PUBLIC_HOST" >> "$GITHUB_ENV"') == 2
+    assert text.count('echo "PORTWYRM_CERT_PATH=$cert_path" >> "$GITHUB_ENV"') == 2
+
+
+def test_vm104_workflow_collects_container_diagnostics_on_failure() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert "Collect container diagnostics" in text
+    assert 'docker inspect "$container"' in text
+    assert 'docker logs --tail 300 "$container"' in text
