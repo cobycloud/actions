@@ -10,6 +10,7 @@ on:
       public-host: {type: string, required: true}
       public-service: {type: string, required: true}
       containers-json: {type: string, required: true}
+      env-file: {type: string, required: false, default: ""}
       tigrbl-ref: {type: string, required: false, default: ""}
       tigrcorn-ref: {type: string, required: false, default: ""}
       verify-path: {type: string, required: false, default: "/"}
@@ -53,12 +54,19 @@ jobs:
         shell: bash
         env:
           COMPOSE_FILE: ${{ inputs.compose-file }}
+          ENV_FILE: ${{ inputs.env-file }}
           PUBLIC_SERVICE: ${{ inputs.public-service }}
         run: |
           set -euo pipefail
           docker inspect portwyrm-portwyrm-1 >/dev/null
           docker network inspect "$PORTWYRM_NETWORK" >/dev/null
-          docker compose --file "$COMPOSE_FILE" config --format json > compose-config.json
+          compose=(docker compose)
+          if [[ -n "$ENV_FILE" ]]; then
+            test -r "$ENV_FILE"
+            compose+=(--env-file "$ENV_FILE")
+          fi
+          compose+=(--file "$COMPOSE_FILE")
+          "${compose[@]}" config --format json > compose-config.json
           jq -e --arg service "$PUBLIC_SERVICE" '
             .services[$service].networks
             | has("private") and has("edge") and (keys | length == 2)
@@ -156,11 +164,17 @@ jobs:
         env:
           COMPOSE_FILE: ${{ inputs.compose-file }}
           COMPOSE_PROJECT: ${{ inputs.compose-project }}
+          ENV_FILE: ${{ inputs.env-file }}
         run: |
           set -euo pipefail
-          docker compose --project-name "$COMPOSE_PROJECT" --file "$COMPOSE_FILE" build --pull
-          docker compose --project-name "$COMPOSE_PROJECT" --file "$COMPOSE_FILE" up \
-            --detach --remove-orphans --force-recreate
+          compose=(docker compose --project-name "$COMPOSE_PROJECT")
+          if [[ -n "$ENV_FILE" ]]; then
+            test -r "$ENV_FILE"
+            compose+=(--env-file "$ENV_FILE")
+          fi
+          compose+=(--file "$COMPOSE_FILE")
+          "${compose[@]}" build --pull
+          "${compose[@]}" up --detach --remove-orphans --force-recreate
       - uses: ./actions/wyrmctl-apply
         with:
           artifact: deployment-evidence/wyrmctl-plan.json
