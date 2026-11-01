@@ -1,0 +1,211 @@
+name: Reusable VM104 Wyrmctl Compose Deploy
+
+on:
+  workflow_call:
+    inputs:
+      compose-file: {type: string, required: true}
+      compose-project: {type: string, required: true}
+      desired-state: {type: string, required: true}
+      owner: {type: string, required: true}
+      public-host: {type: string, required: true}
+      public-service: {type: string, required: true}
+      containers-json: {type: string, required: true}
+      tigrbl-ref: {type: string, required: false, default: ""}
+      tigrcorn-ref: {type: string, required: false, default: ""}
+      verify-path: {type: string, required: false, default: "/"}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vm104-${{ inputs.owner }}-production
+  cancel-in-progress: false
+
+env:
+  PORTWYRM_NETWORK: portwyrm-edge
+  WYRMCTL_CREDENTIAL: /etc/groupsum/portwyrm.env
+
+jobs:
+  plan:
+    runs-on:
+      group: portwyrm-deployment
+      labels: [self-hosted, Linux, X64, vm104]
+    outputs:
+      artifact-name: ${{ steps.artifact.outputs.name }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+      - if: ${{ inputs.tigrbl-ref != '' }}
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+        with:
+          repository: tigrbl/tigrbl
+          ref: ${{ inputs.tigrbl-ref }}
+          path: .deployment-dependencies/tigrbl
+          persist-credentials: false
+      - if: ${{ inputs.tigrcorn-ref != '' }}
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+        with:
+          repository: tigrbl/tigrcorn
+          ref: ${{ inputs.tigrcorn-ref }}
+          path: .deployment-dependencies/tigrcorn
+          persist-credentials: false
+      - uses: ./actions/wyrmctl-setup
+      - name: Validate VM104 topology and tenant isolation
+        shell: bash
+        env:
+          COMPOSE_FILE: ${{ inputs.compose-file }}
+          PUBLIC_SERVICE: ${{ inputs.public-service }}
+        run: |
+          set -euo pipefail
+          docker inspect portwyrm-portwyrm-1 >/dev/null
+          docker network inspect "$PORTWYRM_NETWORK" >/dev/null
+          docker compose --file "$COMPOSE_FILE" config --format json > compose-config.json
+          jq -e --arg service "$PUBLIC_SERVICE" '
+            .services[$service].networks
+            | has("private") and has("edge") and (keys | length == 2)
+          ' compose-config.json >/dev/null
+          jq -e '.networks.edge.external == true and .networks.edge.name == "portwyrm-edge"' \
+            compose-config.json >/dev/null
+      - id: portwyrm
+        name: Load protected Portwyrm automation identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -r "$WYRMCTL_CREDENTIAL"
+          base_url="$(sed -n 's/^PORTWYRM_WYRMCTL_BASE_URL=//p' "$WYRMCTL_CREDENTIAL")"
+          identity="$(sed -n 's/^PORTWYRM_WYRMCTL_IDENTITY=//p' "$WYRMCTL_CREDENTIAL")"
+          secret="$(sed -n 's/^PORTWYRM_WYRMCTL_SECRET_B64=//p' "$WYRMCTL_CREDENTIAL" | base64 -d)"
+          echo "::add-mask::$secret"
+          test "$identity" = jacob@swarmauri.com
+          echo "base-url=$base_url" >> "$GITHUB_OUTPUT"
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+          echo "secret=$secret" >> "$GITHUB_OUTPUT"
+      - name: Prepare deployment evidence
+        run: mkdir -p deployment-evidence
+      - uses: ./actions/wyrmctl-plan
+        with:
+          desired-state: ${{ inputs.desired-state }}
+          owner: ${{ inputs.owner }}
+          artifact-out: deployment-evidence/wyrmctl-plan.json
+          repository: ${{ github.repository }}
+          environment: production
+          commit: ${{ github.sha }}
+          base-url: ${{ steps.portwyrm.outputs.base-url }}
+          identity: ${{ steps.portwyrm.outputs.identity }}
+          secret: ${{ steps.portwyrm.outputs.secret }}
+          certificate-mode: create
+      - name: Seal reviewed plan
+        run: sha256sum deployment-evidence/wyrmctl-plan.json > deployment-evidence/plan.sha256
+      - id: artifact
+        shell: bash
+        run: echo "name=vm104-${{ inputs.owner }}-plan-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: deployment-evidence
+          if-no-files-found: error
+          retention-days: 14
+
+  apply:
+    needs: plan
+    runs-on:
+      group: portwyrm-deployment
+      labels: [self-hosted, Linux, X64, vm104]
+    environment: deployment
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+      - if: ${{ inputs.tigrbl-ref != '' }}
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+        with:
+          repository: tigrbl/tigrbl
+          ref: ${{ inputs.tigrbl-ref }}
+          path: .deployment-dependencies/tigrbl
+          persist-credentials: false
+      - if: ${{ inputs.tigrcorn-ref != '' }}
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+        with:
+          repository: tigrbl/tigrcorn
+          ref: ${{ inputs.tigrcorn-ref }}
+          path: .deployment-dependencies/tigrcorn
+          persist-credentials: false
+      - uses: ./actions/wyrmctl-setup
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ needs.plan.outputs.artifact-name }}
+          path: deployment-evidence
+      - name: Verify reviewed plan and load automation identity
+        id: portwyrm
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum --check deployment-evidence/plan.sha256
+          base_url="$(sed -n 's/^PORTWYRM_WYRMCTL_BASE_URL=//p' "$WYRMCTL_CREDENTIAL")"
+          identity="$(sed -n 's/^PORTWYRM_WYRMCTL_IDENTITY=//p' "$WYRMCTL_CREDENTIAL")"
+          secret="$(sed -n 's/^PORTWYRM_WYRMCTL_SECRET_B64=//p' "$WYRMCTL_CREDENTIAL" | base64 -d)"
+          echo "::add-mask::$secret"
+          test "$identity" = jacob@swarmauri.com
+          echo "base-url=$base_url" >> "$GITHUB_OUTPUT"
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+          echo "secret=$secret" >> "$GITHUB_OUTPUT"
+      - name: Acquire VM104 mutation lease
+        uses: ./actions/host-mutation-lock
+        with:
+          operation: acquire
+          lock-name: vm104
+      - name: Build and deploy reviewed Compose stack
+        shell: bash
+        env:
+          COMPOSE_FILE: ${{ inputs.compose-file }}
+          COMPOSE_PROJECT: ${{ inputs.compose-project }}
+        run: |
+          set -euo pipefail
+          docker compose --project-name "$COMPOSE_PROJECT" --file "$COMPOSE_FILE" build --pull
+          docker compose --project-name "$COMPOSE_PROJECT" --file "$COMPOSE_FILE" up \
+            --detach --remove-orphans --force-recreate
+      - uses: ./actions/wyrmctl-apply
+        with:
+          artifact: deployment-evidence/wyrmctl-plan.json
+          repository: ${{ github.repository }}
+          environment: production
+          commit: ${{ github.sha }}
+          base-url: ${{ steps.portwyrm.outputs.base-url }}
+          identity: ${{ steps.portwyrm.outputs.identity }}
+          secret: ${{ steps.portwyrm.outputs.secret }}
+          report: deployment-evidence/wyrmctl-apply.json
+          audit-log: deployment-evidence/wyrmctl-audit.json
+          rollback-plan: deployment-evidence/wyrmctl-rollback.json
+      - name: Verify containers, HTTPS, and certificate
+        shell: bash
+        env:
+          CONTAINERS_JSON: ${{ inputs.containers-json }}
+          PUBLIC_HOST: ${{ inputs.public-host }}
+          VERIFY_PATH: ${{ inputs.verify-path }}
+        run: |
+          set -euo pipefail
+          jq -r '.[]' <<<"$CONTAINERS_JSON" | while read -r container; do
+            for attempt in $(seq 1 60); do
+              running="$(docker inspect --format '{{.State.Running}}' "$container" 2>/dev/null || true)"
+              health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container" 2>/dev/null || true)"
+              if [[ "$running" == true && ("$health" == healthy || "$health" == none) ]]; then break; fi
+              sleep 5
+            done
+            test "$(docker inspect --format '{{.State.Running}}' "$container")" = true
+            health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container")"
+            test "$health" = healthy -o "$health" = none
+          done
+          curl --fail --silent --show-error --location --max-time 30 \
+            "https://${PUBLIC_HOST}${VERIFY_PATH}" >/dev/null
+          openssl s_client -connect "${PUBLIC_HOST}:443" -servername "$PUBLIC_HOST" </dev/null 2>/dev/null \
+            | openssl x509 -noout -ext subjectAltName | grep -Fq "DNS:$PUBLIC_HOST"
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: vm104-${{ inputs.owner }}-apply-${{ github.run_id }}
+          path: deployment-evidence
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Release VM104 mutation lease
+        if: always()
+        uses: ./actions/host-mutation-lock
+        with:
+          operation: release
+          lock-name: vm104
