@@ -55,6 +55,24 @@ class ReleaseTags(unittest.TestCase):
         for alias in aliases:
             self.assertIn("enable=${{ steps.release.outputs.stable == 'true' }}", alias)
 
+    def test_docker_actions_use_node24_releases_pinned_by_sha(self):
+        workflow = WORKFLOW.read_text()
+        expected = {
+            "docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0",
+            "docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1",
+            "docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0",
+            "docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0",
+        }
+        for action in expected:
+            self.assertIn(action, workflow)
+        for legacy in (
+            "docker/setup-qemu-action@v3",
+            "docker/setup-buildx-action@v3",
+            "docker/login-action@v3",
+            "docker/build-push-action@v6",
+        ):
+            self.assertNotIn(legacy, workflow)
+
 
 if __name__ == "__main__":
     unittest.main()
