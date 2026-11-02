@@ -1,0 +1,239 @@
+name: Reusable VM104 Portwyrm Certificate Renewal
+
+on:
+  workflow_call:
+    inputs:
+      desired-state: {type: string, required: true}
+      owner: {type: string, required: true}
+      certificate-resource-id: {type: string, required: true}
+      confirmation: {type: string, required: true}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vm104-${{ inputs.owner }}-${{ inputs.certificate-resource-id }}-certificate-renewal
+  cancel-in-progress: false
+
+env:
+  WYRMCTL_CREDENTIAL: /etc/groupsum/portwyrm.env
+
+jobs:
+  renew:
+    runs-on:
+      group: portwyrm-deployment
+      labels: [self-hosted, Linux, X64, vm104]
+    environment: deployment
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+      - name: Checkout shared certificate operations
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+        with:
+          repository: cobycloud/actions
+          ref: 723cf9677ae7fa42edfec7b2676f45eae599d0d2
+          path: .cobycloud-actions
+          persist-credentials: false
+      - uses: ./.cobycloud-actions/actions/wyrmctl-setup
+      - name: Validate confirmation and reviewed certificate scope
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          DESIRED_STATE: ${{ inputs.desired-state }}
+          OWNER: ${{ inputs.owner }}
+          CERTIFICATE_RESOURCE_ID: ${{ inputs.certificate-resource-id }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = "RENEW $CERTIFICATE_RESOURCE_ID"
+          mkdir -p deployment-evidence
+          wyrmctl --output json validate "$DESIRED_STATE"
+          python - "$DESIRED_STATE" "$OWNER" "$CERTIFICATE_RESOURCE_ID" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          import yaml
+
+          desired_path = Path(sys.argv[1])
+          expected_owner = sys.argv[2]
+          expected_resource_id = sys.argv[3]
+          payload = yaml.safe_load(desired_path.read_text(encoding="utf-8"))
+          certificates = [
+              item
+              for item in payload.get("spec", {}).get("certificates", [])
+              if item.get("meta", {}).get("owner") == expected_owner
+              and item.get("meta", {}).get("resource_id") == expected_resource_id
+          ]
+          if len(certificates) != 1:
+              raise SystemExit(
+                  "renewal requires exactly one certificate matching the reviewed "
+                  f"owner and resource_id; found {len(certificates)}"
+              )
+          certificate = certificates[0]
+          if certificate.get("provider") != "letsencrypt":
+              raise SystemExit("only letsencrypt certificates may use this renewal workflow")
+          domains = certificate.get("domain_names", [])
+          if not domains or len(domains) != len(set(domains)):
+              raise SystemExit("certificate domains must be present and unique")
+          evidence = {
+              "desired_state": str(desired_path),
+              "owner": expected_owner,
+              "resource_id": expected_resource_id,
+              "certificate_name": certificate.get("name"),
+              "domain_names": domains,
+          }
+          Path("deployment-evidence/renewal-scope.json").write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+      - id: portwyrm
+        name: Load protected Portwyrm automation identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -r "$WYRMCTL_CREDENTIAL"
+          base_url="$(sed -n 's/^PORTWYRM_WYRMCTL_BASE_URL=//p' "$WYRMCTL_CREDENTIAL")"
+          identity="$(sed -n 's/^PORTWYRM_WYRMCTL_IDENTITY=//p' "$WYRMCTL_CREDENTIAL")"
+          secret="$(sed -n 's/^PORTWYRM_WYRMCTL_SECRET_B64=//p' "$WYRMCTL_CREDENTIAL" | base64 -d)"
+          test -n "$base_url"
+          test "$identity" = jacob@swarmauri.com
+          test -n "$secret"
+          echo "::add-mask::$secret"
+          echo "base-url=$base_url" >> "$GITHUB_OUTPUT"
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+          echo "secret=$secret" >> "$GITHUB_OUTPUT"
+      - name: Acquire VM104 mutation lease
+        uses: ./.cobycloud-actions/actions/host-mutation-lock
+        with:
+          operation: acquire
+          lock-name: vm104
+      - name: Force reissue of only the reviewed managed certificate
+        shell: bash
+        env:
+          DESIRED_STATE: ${{ inputs.desired-state }}
+          OWNER: ${{ inputs.owner }}
+          CERTIFICATE_RESOURCE_ID: ${{ inputs.certificate-resource-id }}
+          PORTWYRM_BASE_URL: ${{ steps.portwyrm.outputs.base-url }}
+          PORTWYRM_IDENTITY: ${{ steps.portwyrm.outputs.identity }}
+          PORTWYRM_SECRET: ${{ steps.portwyrm.outputs.secret }}
+        run: |
+          set -euo pipefail
+          python - "$DESIRED_STATE" "$OWNER" "$CERTIFICATE_RESOURCE_ID" <<'PY'
+          import hashlib
+          import json
+          import os
+          import socket
+          import ssl
+          import sys
+          from pathlib import Path
+
+          import requests
+          import yaml
+
+          desired_path = Path(sys.argv[1])
+          owner = sys.argv[2]
+          resource_id = sys.argv[3]
+          desired = yaml.safe_load(desired_path.read_text(encoding="utf-8"))
+          certificate = next(
+              item
+              for item in desired["spec"]["certificates"]
+              if item.get("meta", {}).get("owner") == owner
+              and item.get("meta", {}).get("resource_id") == resource_id
+          )
+          expected_domains = certificate["domain_names"]
+          base_url = os.environ["PORTWYRM_BASE_URL"].rstrip("/")
+          session = requests.Session()
+          auth_response = session.post(
+              f"{base_url}/tokens",
+              json={
+                  "identity": os.environ["PORTWYRM_IDENTITY"],
+                  "secret": os.environ["PORTWYRM_SECRET"],
+                  "scope": "user",
+              },
+              timeout=30,
+          )
+          auth_response.raise_for_status()
+          auth_payload = auth_response.json()
+          token = auth_payload.get("token") or auth_payload.get("result", {}).get("token")
+          if not token:
+              raise SystemExit("Portwyrm token response did not contain a token")
+          session.headers["Authorization"] = f"Bearer {token}"
+          list_response = session.get(f"{base_url}/nginx/certificates", timeout=30)
+          list_response.raise_for_status()
+          list_payload = list_response.json()
+          records = (
+              list_payload.get("result", list_payload)
+              if isinstance(list_payload, dict)
+              else list_payload
+          )
+          if not isinstance(records, list):
+              raise SystemExit("Portwyrm certificate list response was not an array")
+          matches = [
+              item
+              for item in records
+              if item.get("meta", {}).get("owner") == owner
+              and item.get("meta", {}).get("resource_id") == resource_id
+          ]
+          if len(matches) != 1:
+              raise SystemExit(
+                  "live Portwyrm state must contain exactly one certificate matching "
+                  f"the reviewed owner and resource_id; found {len(matches)}"
+              )
+          live = matches[0]
+          if live.get("provider") != "letsencrypt":
+              raise SystemExit("refusing to renew a non-letsencrypt certificate")
+          if live.get("domain_names") != expected_domains:
+              raise SystemExit(
+                  "live certificate domains do not exactly match reviewed desired state; "
+                  "apply the reviewed Wyrmctl plan before renewal"
+              )
+          renewal = session.post(
+              f"{base_url}/nginx/certificates/{live['id']}/renew",
+              params={"force": "true"},
+              timeout=180,
+          )
+          renewal.raise_for_status()
+          renewed_payload = renewal.json()
+          renewed = renewed_payload.get("result", renewed_payload)
+          if renewed.get("domain_names") != expected_domains:
+              raise SystemExit("renewed certificate domains do not match reviewed state")
+
+          fingerprints = {}
+          context = ssl.create_default_context()
+          for hostname in expected_domains:
+              with socket.create_connection((hostname, 443), timeout=30) as raw_socket:
+                  with context.wrap_socket(raw_socket, server_hostname=hostname) as tls_socket:
+                      peer = tls_socket.getpeercert(binary_form=True)
+                      fingerprints[hostname] = hashlib.sha256(peer).hexdigest()
+          if len(set(fingerprints.values())) != 1:
+              raise SystemExit("reviewed certificate domains do not serve one TLS certificate")
+          evidence = {
+              "certificate_id": live["id"],
+              "owner": owner,
+              "resource_id": resource_id,
+              "domain_names": expected_domains,
+              "sha256_fingerprint": next(iter(fingerprints.values())),
+              "expires_on": renewed.get("expires_on"),
+          }
+          Path("deployment-evidence/renewal-result.json").write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+      - name: Seal renewal evidence
+        if: success()
+        shell: bash
+        run: sha256sum deployment-evidence/*.json > deployment-evidence/sha256sums.txt
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: vm104-certificate-renewal-${{ inputs.owner }}-${{ github.run_id }}
+          path: deployment-evidence
+          if-no-files-found: error
+          retention-days: 30
+      - name: Release VM104 mutation lease
+        if: always()
+        uses: ./.cobycloud-actions/actions/host-mutation-lock
+        with:
+          operation: release
+          lock-name: vm104

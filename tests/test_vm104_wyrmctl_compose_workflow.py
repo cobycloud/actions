@@ -1,7 +1,6 @@
 import re
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github/workflows/reusable-vm104-wyrmctl-compose-deploy.yml"
 
@@ -53,9 +52,10 @@ def test_vm104_workflow_materializes_portwyrm_runtime_context() -> None:
 def test_vm104_workflow_validates_tls_coverage_before_plan_and_apply() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 
-    assert text.count("actions/wyrmctl-tls-coverage") == 2
-    assert text.count("desired-state: ${{ inputs.desired-state }}") == 3
-    assert text.count("public-host: ${{ inputs.public-host }}") == 2
+    assert text.count("actions/wyrmctl-tls-coverage") == 3
+    assert text.count("desired-state: ${{ inputs.desired-state }}") == 4
+    assert text.count("public-host: ${{ inputs.public-host }}") == 3
+    assert 'verify-live: "true"' in text
 
 
 def test_vm104_workflow_verifies_strict_https_and_served_san() -> None:

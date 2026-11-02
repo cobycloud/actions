@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "actions/wyrmctl-tls-coverage/validate.py"
 SPEC = importlib.util.spec_from_file_location("wyrmctl_tls_coverage", MODULE_PATH)
@@ -94,3 +93,44 @@ def test_rejects_unknown_certificate_reference() -> None:
     document["spec"]["proxyHosts"][0]["certificate_ref"] = "cert.missing"
     with pytest.raises(ValueError, match="unknown certificate"):
         MODULE.validate_document(document, "demo.tigrbl.dev")
+
+
+def test_live_verification_checks_every_domain_bound_to_one_certificate() -> None:
+    observed: list[str] = []
+
+    def fetcher(hostname: str, port: int, timeout: float) -> tuple[str, tuple[str, ...]]:
+        observed.append(hostname)
+        assert port == 443
+        assert timeout == 5.0
+        return "shared-fingerprint", ("demo.tigrbl.dev", "legacy.tigrbl.dev")
+
+    fingerprints = MODULE.verify_live_bindings(
+        {"cert.demo": ("demo.tigrbl.dev", "legacy.tigrbl.dev")},
+        timeout=5.0,
+        fetcher=fetcher,
+    )
+
+    assert observed == ["demo.tigrbl.dev", "legacy.tigrbl.dev"]
+    assert fingerprints == {"cert.demo": "shared-fingerprint"}
+
+
+def test_live_verification_rejects_stale_alias_certificate() -> None:
+    def fetcher(hostname: str, _port: int, _timeout: float) -> tuple[str, tuple[str, ...]]:
+        return "fingerprint", ("demo.tigrbl.dev",)
+
+    with pytest.raises(ValueError, match="legacy.*does not cover"):
+        MODULE.verify_live_bindings(
+            {"cert.demo": ("demo.tigrbl.dev", "legacy.tigrbl.dev")},
+            fetcher=fetcher,
+        )
+
+
+def test_live_verification_rejects_different_certificates_for_one_reference() -> None:
+    def fetcher(hostname: str, _port: int, _timeout: float) -> tuple[str, tuple[str, ...]]:
+        return hostname, (hostname,)
+
+    with pytest.raises(ValueError, match="different live certificates"):
+        MODULE.verify_live_bindings(
+            {"cert.demo": ("demo.tigrbl.dev", "legacy.tigrbl.dev")},
+            fetcher=fetcher,
+        )

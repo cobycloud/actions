@@ -235,6 +235,12 @@ jobs:
           report: deployment-evidence/wyrmctl-apply.json
           audit-log: deployment-evidence/wyrmctl-audit.json
           rollback-plan: deployment-evidence/wyrmctl-rollback.json
+      - name: Verify every live TLS proxy binding
+        uses: ./.cobycloud-actions/actions/wyrmctl-tls-coverage
+        with:
+          desired-state: ${{ inputs.desired-state }}
+          public-host: ${{ inputs.public-host }}
+          verify-live: "true"
       - name: Verify containers, HTTPS, and certificate
         shell: bash
         env:
