@@ -14,6 +14,7 @@ on:
       tigrbl-ref: {type: string, required: false, default: ""}
       tigrcorn-ref: {type: string, required: false, default: ""}
       verify-path: {type: string, required: false, default: "/"}
+      websocket-probes-json: {type: string, required: false, default: "[]"}
 
 permissions:
   contents: read
@@ -40,7 +41,7 @@ jobs:
         with:
           repository: cobycloud/actions
           # Reusable-workflow github.workflow_sha is the caller SHA, not this repository.
-          ref: 279d961ee3d01c42ed019e9fbb6f883af44d854f
+          ref: 8a2e558cfed9b64e4be4c656d9e3c436ed3156e1
           path: .cobycloud-actions
           persist-credentials: false
       - if: ${{ inputs.tigrbl-ref != '' }}
@@ -150,7 +151,7 @@ jobs:
         with:
           repository: cobycloud/actions
           # Reusable-workflow github.workflow_sha is the caller SHA, not this repository.
-          ref: 279d961ee3d01c42ed019e9fbb6f883af44d854f
+          ref: 8a2e558cfed9b64e4be4c656d9e3c436ed3156e1
           path: .cobycloud-actions
           persist-credentials: false
       - if: ${{ inputs.tigrbl-ref != '' }}
@@ -265,6 +266,12 @@ jobs:
             "https://${PUBLIC_HOST}${VERIFY_PATH}" >/dev/null
           openssl s_client -connect "${PUBLIC_HOST}:443" -servername "$PUBLIC_HOST" </dev/null 2>/dev/null \
             | openssl x509 -noout -ext subjectAltName | grep -Fq "DNS:$PUBLIC_HOST"
+      - name: Verify public WebSocket endpoints
+        if: ${{ inputs.websocket-probes-json != '[]' }}
+        uses: ./.cobycloud-actions/actions/realtime-probe
+        with:
+          probes-json: ${{ inputs.websocket-probes-json }}
+          evidence-out: deployment-evidence/realtime-probes.json
       - name: Collect container diagnostics
         if: failure()
         shell: bash
