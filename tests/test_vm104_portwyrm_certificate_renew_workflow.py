@@ -31,6 +31,15 @@ def test_renewal_uses_portwyrm_force_reissue_without_deletion() -> None:
     )
 
 
+def test_renewal_reports_bounded_redacted_server_rejections() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert "detail = renewal.text[:4000]" in text
+    assert '("password", "secret", "token", "private_key")' in text
+    assert "[REDACTED]" in text
+    assert "renewal.raise_for_status()" in text
+
+
 def test_renewal_holds_host_lock_and_strictly_verifies_live_tls() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 
