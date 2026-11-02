@@ -32,7 +32,7 @@ def test_vm104_workflow_checks_out_shared_actions_before_local_use() -> None:
 
     assert text.count("repository: cobycloud/actions") == 2
     assert text.count("path: .cobycloud-actions") == 2
-    shared_ref = "1f67ac678f115a88f69e5ed8b149a70ab6c374b3"
+    shared_ref = "279d961ee3d01c42ed019e9fbb6f883af44d854f"
     assert text.count(f"ref: {shared_ref}") == 2
     assert re.fullmatch(r"[0-9a-f]{40}", shared_ref)
     assert "ref: ${{ github.workflow_sha }}" not in text

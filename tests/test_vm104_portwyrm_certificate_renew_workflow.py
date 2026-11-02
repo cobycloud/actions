@@ -36,3 +36,11 @@ def test_renewal_holds_host_lock_and_strictly_verifies_live_tls() -> None:
     assert "getpeercert(binary_form=True)" in text
     assert "len(set(fingerprints.values())) != 1" in text
     assert "--insecure" not in text
+
+
+def test_renewal_checks_out_an_immutable_shared_action_revision() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    shared_ref = "279d961ee3d01c42ed019e9fbb6f883af44d854f"
+    assert f"ref: {shared_ref}" in text
+    assert "persist-credentials: false" in text
