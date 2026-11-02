@@ -8,10 +8,15 @@ def test_renewal_is_confirmation_gated_and_owner_scoped() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 
     assert 'test "$CONFIRMATION" = "RENEW $CERTIFICATE_RESOURCE_ID"' in text
-    assert 'item.get("meta", {}).get("owner") == owner' in text
-    assert 'item.get("meta", {}).get("resource_id") == resource_id' in text
+    assert "actions/portwyrm-certificate-renew/validate_scope.py" in text
     assert "live.get(\"domain_names\") != expected_domains" in text
     assert 'environment: deployment' in text
+
+
+def test_preflight_artifact_upload_does_not_mask_validation_failure() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert "if-no-files-found: warn" in text
 
 
 def test_renewal_uses_portwyrm_force_reissue_without_deletion() -> None:
@@ -41,6 +46,6 @@ def test_renewal_holds_host_lock_and_strictly_verifies_live_tls() -> None:
 def test_renewal_checks_out_an_immutable_shared_action_revision() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 
-    shared_ref = "279d961ee3d01c42ed019e9fbb6f883af44d854f"
+    shared_ref = "031225e62b8716b47f3439829497e397e0e93a5e"
     assert f"ref: {shared_ref}" in text
     assert "persist-credentials: false" in text

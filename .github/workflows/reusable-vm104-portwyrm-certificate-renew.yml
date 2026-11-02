@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
         with:
           repository: cobycloud/actions
-          ref: 279d961ee3d01c42ed019e9fbb6f883af44d854f
+          ref: 031225e62b8716b47f3439829497e397e0e93a5e
           path: .cobycloud-actions
           persist-credentials: false
       - uses: ./.cobycloud-actions/actions/wyrmctl-setup
@@ -46,46 +46,11 @@ jobs:
           test "$CONFIRMATION" = "RENEW $CERTIFICATE_RESOURCE_ID"
           mkdir -p deployment-evidence
           wyrmctl --output json validate "$DESIRED_STATE"
-          python - "$DESIRED_STATE" "$OWNER" "$CERTIFICATE_RESOURCE_ID" <<'PY'
-          import json
-          import sys
-          from pathlib import Path
-
-          import yaml
-
-          desired_path = Path(sys.argv[1])
-          expected_owner = sys.argv[2]
-          expected_resource_id = sys.argv[3]
-          payload = yaml.safe_load(desired_path.read_text(encoding="utf-8"))
-          certificates = [
-              item
-              for item in payload.get("spec", {}).get("certificates", [])
-              if item.get("meta", {}).get("owner") == expected_owner
-              and item.get("meta", {}).get("resource_id") == expected_resource_id
-          ]
-          if len(certificates) != 1:
-              raise SystemExit(
-                  "renewal requires exactly one certificate matching the reviewed "
-                  f"owner and resource_id; found {len(certificates)}"
-              )
-          certificate = certificates[0]
-          if certificate.get("provider") != "letsencrypt":
-              raise SystemExit("only letsencrypt certificates may use this renewal workflow")
-          domains = certificate.get("domain_names", [])
-          if not domains or len(domains) != len(set(domains)):
-              raise SystemExit("certificate domains must be present and unique")
-          evidence = {
-              "desired_state": str(desired_path),
-              "owner": expected_owner,
-              "resource_id": expected_resource_id,
-              "certificate_name": certificate.get("name"),
-              "domain_names": domains,
-          }
-          Path("deployment-evidence/renewal-scope.json").write_text(
-              json.dumps(evidence, indent=2, sort_keys=True) + "\n",
-              encoding="utf-8",
-          )
-          PY
+          python .cobycloud-actions/actions/portwyrm-certificate-renew/validate_scope.py \
+            "$DESIRED_STATE" \
+            "$OWNER" \
+            "$CERTIFICATE_RESOURCE_ID" \
+            deployment-evidence/renewal-scope.json
       - id: portwyrm
         name: Load protected Portwyrm automation identity
         shell: bash
@@ -229,7 +194,7 @@ jobs:
         with:
           name: vm104-certificate-renewal-${{ inputs.owner }}-${{ github.run_id }}
           path: deployment-evidence
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
       - name: Release VM104 mutation lease
         if: always()
