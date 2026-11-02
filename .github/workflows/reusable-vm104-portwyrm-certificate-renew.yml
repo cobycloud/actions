@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
         with:
           repository: cobycloud/actions
-          ref: 031225e62b8716b47f3439829497e397e0e93a5e
+          ref: d186f206be18fe58e60c6aeead114bd0ade6abae
           path: .cobycloud-actions
           persist-credentials: false
       - uses: ./.cobycloud-actions/actions/wyrmctl-setup

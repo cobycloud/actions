@@ -47,6 +47,6 @@ def test_renewal_holds_host_lock_and_strictly_verifies_live_tls() -> None:
 def test_renewal_checks_out_an_immutable_shared_action_revision() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 
-    shared_ref = "031225e62b8716b47f3439829497e397e0e93a5e"
+    shared_ref = "d186f206be18fe58e60c6aeead114bd0ade6abae"
     assert f"ref: {shared_ref}" in text
     assert "persist-credentials: false" in text
