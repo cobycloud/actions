@@ -5,6 +5,15 @@ shared Portwyrm control-plane lifecycle. Consumers pin these actions to an immut
 commit, create a plan artifact in a read-only job, and apply that exact artifact only
 after the protected environment gate.
 
+`reusable-vm104-wyrmctl-certificate-adopt.yml` provides the exceptional ownership
+recovery path for a single pre-existing VM104 certificate. The caller must supply an
+explicit owner, certificate resource ID, desired-state path, and the exact confirmation
+`ADOPT <certificate-resource-id>`. The desired state must contain exactly one certificate
+whose `meta.owner`, `meta.resource_id`, and `meta.managed_by` match the reviewed scope.
+The workflow uses metadata-only adoption with certificate reuse, never creates adjacent
+resources, never prunes, runs behind the `deployment` environment, and retains scoped
+execution evidence for 30 days.
+
 The actions accept credentials as inputs but never persist them. Wyrmctl retains its
 upstream `NPM_BASE_URL`, `NPM_IDENTITY`, and `NPM_SECRET` environment contract while
 talking to the Portwyrm-compatible API.
