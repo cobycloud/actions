@@ -15,6 +15,9 @@ on:
       tigrcorn-ref: {type: string, required: false, default: ""}
       verify-path: {type: string, required: false, default: "/"}
       websocket-probes-json: {type: string, required: false, default: "[]"}
+      source-repository: {type: string, required: false, default: ""}
+      source-ref: {type: string, required: false, default: ""}
+      source-path: {type: string, required: false, default: ".deployment-source"}
 
 permissions:
   contents: read
@@ -36,6 +39,14 @@ jobs:
       artifact-name: ${{ steps.artifact.outputs.name }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+      - name: Checkout immutable workload source
+        if: ${{ inputs.source-repository != '' }}
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+        with:
+          repository: ${{ inputs.source-repository }}
+          ref: ${{ inputs.source-ref }}
+          path: ${{ inputs.source-path }}
+          persist-credentials: false
       - name: Checkout shared deployment actions
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
         with:
@@ -83,6 +94,10 @@ jobs:
           PUBLIC_SERVICE: ${{ inputs.public-service }}
         run: |
           set -euo pipefail
+          if [[ -n "${{ inputs.source-repository }}" ]]; then
+            test -n "${{ inputs.source-ref }}"
+            test "$(git -C '${{ inputs.source-path }}' rev-parse HEAD)" = "${{ inputs.source-ref }}"
+          fi
           docker inspect portwyrm-portwyrm-1 >/dev/null
           docker network inspect "$PORTWYRM_NETWORK" >/dev/null
           compose=(docker compose)
@@ -146,6 +161,14 @@ jobs:
     environment: deployment
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+      - name: Checkout immutable workload source
+        if: ${{ inputs.source-repository != '' }}
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
+        with:
+          repository: ${{ inputs.source-repository }}
+          ref: ${{ inputs.source-ref }}
+          path: ${{ inputs.source-path }}
+          persist-credentials: false
       - name: Checkout shared deployment actions
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
         with:
