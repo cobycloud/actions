@@ -39,7 +39,8 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
         with:
           repository: cobycloud/actions
-          ref: ${{ github.workflow_sha }}
+          # Reusable-workflow github.workflow_sha is the caller SHA, not this repository.
+          ref: 13c1e26e7758aa55a861eb1e4afbf79ca21d3cd4
           path: .cobycloud-actions
           persist-credentials: false
       - if: ${{ inputs.tigrbl-ref != '' }}
@@ -148,7 +149,8 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v5
         with:
           repository: cobycloud/actions
-          ref: ${{ github.workflow_sha }}
+          # Reusable-workflow github.workflow_sha is the caller SHA, not this repository.
+          ref: 13c1e26e7758aa55a861eb1e4afbf79ca21d3cd4
           path: .cobycloud-actions
           persist-credentials: false
       - if: ${{ inputs.tigrbl-ref != '' }}
