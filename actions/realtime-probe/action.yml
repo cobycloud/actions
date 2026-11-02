@@ -1,0 +1,30 @@
+name: Realtime WebSocket Probe
+description: Verify public WSS handshakes and optional JSON-RPC responses after deployment.
+inputs:
+  probes-json:
+    description: JSON array of WebSocket probe definitions.
+    required: true
+  evidence-out:
+    description: Path for the redacted JSON verification report.
+    required: false
+    default: deployment-evidence/realtime-probes.json
+  timeout-seconds:
+    description: Per-probe connection and response timeout.
+    required: false
+    default: "10"
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v7
+    - name: Verify realtime endpoints
+      shell: bash
+      env:
+        REALTIME_PROBES_JSON: ${{ inputs.probes-json }}
+        REALTIME_EVIDENCE_OUT: ${{ inputs.evidence-out }}
+        REALTIME_TIMEOUT_SECONDS: ${{ inputs.timeout-seconds }}
+      run: >-
+        uv run --no-project --with websockets==15.0.1
+        python "$GITHUB_ACTION_PATH/verify.py"
+        --probes-json "$REALTIME_PROBES_JSON"
+        --evidence-out "$REALTIME_EVIDENCE_OUT"
+        --timeout-seconds "$REALTIME_TIMEOUT_SECONDS"
