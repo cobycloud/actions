@@ -24,3 +24,9 @@ reviewed, full-length `cobycloud/actions` commit. It must not use
 `github.workflow_sha` for that checkout: in a called workflow GitHub resolves
 that value to the caller repository's commit, which is not a valid object in
 `cobycloud/actions`.
+
+`wyrmctl-plan` preserves Wyrmctl's safety boundary while supporting reviewed
+owned updates. Exit code `1` is accepted only when a non-empty plan artifact was
+written, strict artifact inspection succeeds, and both NPM and DNS conflict
+collections are empty. Unmanaged, foreign-owned, capability, DNS, malformed,
+and missing-artifact plans remain blocking failures.

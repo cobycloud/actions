@@ -29,6 +29,7 @@ runs:
       run: |
         set -euo pipefail
         wyrmctl --output json validate "$DESIRED_STATE"
+        set +e
         wyrmctl --output json plan "$DESIRED_STATE" \
           --owner "$OWNER" \
           --certificate-mode "$CERTIFICATE_MODE" \
@@ -37,5 +38,24 @@ runs:
           --environment "$ENVIRONMENT" \
           --commit "$COMMIT" \
           --validate-output
+        plan_exit=$?
+        set -e
+        if [[ ! -s "$ARTIFACT_OUT" ]]; then
+          echo "Wyrmctl plan did not produce a non-empty artifact (exit $plan_exit)." >&2
+          if [[ "$plan_exit" -eq 0 ]]; then exit 1; fi
+          exit "$plan_exit"
+        fi
         wyrmctl --output json artifact inspect "$ARTIFACT_OUT" --strict
+        python "${{ github.action_path }}/validate_plan_artifact.py" "$ARTIFACT_OUT"
+        case "$plan_exit" in
+          0)
+            ;;
+          1)
+            echo "::notice::Wyrmctl reported owned drift; the strict conflict-free plan artifact is eligible for review."
+            ;;
+          *)
+            echo "Wyrmctl plan failed with unsupported exit code $plan_exit." >&2
+            exit "$plan_exit"
+            ;;
+        esac
 
