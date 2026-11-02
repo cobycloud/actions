@@ -18,3 +18,9 @@ referenced by that proxy, and the declared `public-host` must be one of those
 proxy hostnames. Exact names and single-label DNS wildcards are supported. The
 post-deploy check uses strict HTTPS validation and confirms that the certificate
 served for the requested SNI hostname contains that hostname in its SANs.
+
+The reusable workflow checks out this repository's local composite actions at a
+reviewed, full-length `cobycloud/actions` commit. It must not use
+`github.workflow_sha` for that checkout: in a called workflow GitHub resolves
+that value to the caller repository's commit, which is not a valid object in
+`cobycloud/actions`.
