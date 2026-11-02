@@ -95,14 +95,31 @@ def test_rejects_unknown_certificate_reference() -> None:
         MODULE.validate_document(document, "demo.tigrbl.dev")
 
 
+def test_rejects_portwyrm_gateway_as_primary_certificate_identity() -> None:
+    with pytest.raises(ValueError, match="application, not a Portwyrm gateway"):
+        MODULE.validate_document(
+            desired_state(
+                proxy_domains=["demo.tigrbl.dev"],
+                certificate_domains=["portwyrm-104.bz23.xyz", "demo.tigrbl.dev"],
+            ),
+            "demo.tigrbl.dev",
+        )
+
+
 def test_live_verification_checks_every_domain_bound_to_one_certificate() -> None:
     observed: list[str] = []
 
-    def fetcher(hostname: str, port: int, timeout: float) -> tuple[str, tuple[str, ...]]:
+    def fetcher(
+        hostname: str, port: int, timeout: float
+    ) -> tuple[str, tuple[str, ...], str]:
         observed.append(hostname)
         assert port == 443
         assert timeout == 5.0
-        return "shared-fingerprint", ("demo.tigrbl.dev", "legacy.tigrbl.dev")
+        return (
+            "shared-fingerprint",
+            ("demo.tigrbl.dev", "legacy.tigrbl.dev"),
+            "demo.tigrbl.dev",
+        )
 
     fingerprints = MODULE.verify_live_bindings(
         {"cert.demo": ("demo.tigrbl.dev", "legacy.tigrbl.dev")},
@@ -115,8 +132,10 @@ def test_live_verification_checks_every_domain_bound_to_one_certificate() -> Non
 
 
 def test_live_verification_rejects_stale_alias_certificate() -> None:
-    def fetcher(hostname: str, _port: int, _timeout: float) -> tuple[str, tuple[str, ...]]:
-        return "fingerprint", ("demo.tigrbl.dev",)
+    def fetcher(
+        hostname: str, _port: int, _timeout: float
+    ) -> tuple[str, tuple[str, ...], str]:
+        return "fingerprint", ("demo.tigrbl.dev",), "demo.tigrbl.dev"
 
     with pytest.raises(ValueError, match="legacy.*does not cover"):
         MODULE.verify_live_bindings(
@@ -126,11 +145,30 @@ def test_live_verification_rejects_stale_alias_certificate() -> None:
 
 
 def test_live_verification_rejects_different_certificates_for_one_reference() -> None:
-    def fetcher(hostname: str, _port: int, _timeout: float) -> tuple[str, tuple[str, ...]]:
-        return hostname, (hostname,)
+    def fetcher(
+        hostname: str, _port: int, _timeout: float
+    ) -> tuple[str, tuple[str, ...], str]:
+        return hostname, (hostname,), hostname
 
     with pytest.raises(ValueError, match="different live certificates"):
         MODULE.verify_live_bindings(
             {"cert.demo": ("demo.tigrbl.dev", "legacy.tigrbl.dev")},
+            fetcher=fetcher,
+        )
+
+
+def test_live_verification_rejects_portwyrm_gateway_common_name() -> None:
+    def fetcher(
+        _hostname: str, _port: int, _timeout: float
+    ) -> tuple[str, tuple[str, ...], str]:
+        return (
+            "fingerprint",
+            ("demo.tigrbl.dev",),
+            "portwyrm-104.bz23.xyz",
+        )
+
+    with pytest.raises(ValueError, match="application, not a Portwyrm gateway"):
+        MODULE.verify_live_bindings(
+            {"cert.demo": ("demo.tigrbl.dev",)},
             fetcher=fetcher,
         )

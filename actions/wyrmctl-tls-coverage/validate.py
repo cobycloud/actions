@@ -31,7 +31,17 @@ def certificate_covers(hostname: str, certificate_name: str) -> bool:
     suffix = pattern[2:]
     host_labels = host.split(".")
     suffix_labels = suffix.split(".")
-    return len(host_labels) == len(suffix_labels) + 1 and host_labels[1:] == suffix_labels
+    return (
+        len(host_labels) == len(suffix_labels) + 1 and host_labels[1:] == suffix_labels
+    )
+
+
+def _reject_gateway_identity(hostname: str, *, field: str) -> None:
+    first_label = _hostname(hostname, field=field).split(".", 1)[0]
+    if first_label == "portwyrm" or first_label.startswith("portwyrm-"):
+        raise ValueError(
+            f"{field} must identify the application, not a Portwyrm gateway"
+        )
 
 
 def _list(value: object, *, field: str) -> list[Any]:
@@ -50,7 +60,9 @@ def validate_document(document: object, public_host: str) -> dict[str, tuple[str
         raise ValueError("desired state spec must be a mapping")
 
     certificates: dict[str, list[str]] = {}
-    for index, certificate in enumerate(_list(spec.get("certificates"), field="spec.certificates")):
+    for index, certificate in enumerate(
+        _list(spec.get("certificates"), field="spec.certificates")
+    ):
         if not isinstance(certificate, dict):
             raise ValueError(f"spec.certificates[{index}] must be a mapping")
         meta = certificate.get("meta")
@@ -65,7 +77,13 @@ def validate_document(document: object, public_host: str) -> dict[str, tuple[str
             )
         ]
         if not domains:
-            raise ValueError(f"certificate {resource_id} must cover at least one domain")
+            raise ValueError(
+                f"certificate {resource_id} must cover at least one domain"
+            )
+        _reject_gateway_identity(
+            domains[0],
+            field=f"certificate {resource_id} primary domain",
+        )
         if resource_id in certificates:
             raise ValueError(f"duplicate certificate resource_id: {resource_id}")
         certificates[resource_id] = domains
@@ -104,7 +122,9 @@ def validate_document(document: object, public_host: str) -> dict[str, tuple[str
         uncovered = [
             domain
             for domain in domains
-            if not any(certificate_covers(domain, pattern) for pattern in certificate_domains)
+            if not any(
+                certificate_covers(domain, pattern) for pattern in certificate_domains
+            )
         ]
         if uncovered:
             raise ValueError(
@@ -123,11 +143,16 @@ def validate_document(document: object, public_host: str) -> dict[str, tuple[str
     }
 
 
-PeerCertificateFetcher = Callable[[str, int, float], tuple[str, tuple[str, ...]]]
+PeerCertificateFetcher = Callable[
+    [str, int, float],
+    tuple[str, tuple[str, ...], str],
+]
 
 
-def fetch_peer_certificate(hostname: str, port: int, timeout: float) -> tuple[str, tuple[str, ...]]:
-    """Return a trusted SNI peer certificate fingerprint and DNS SANs."""
+def fetch_peer_certificate(
+    hostname: str, port: int, timeout: float
+) -> tuple[str, tuple[str, ...], str]:
+    """Return a trusted SNI peer certificate fingerprint, DNS SANs, and subject CN."""
 
     context = ssl.create_default_context()
     with (
@@ -143,7 +168,17 @@ def fetch_peer_certificate(hostname: str, port: int, timeout: float) -> tuple[st
         for kind, value in certificate.get("subjectAltName", ())
         if kind == "DNS"
     )
-    return hashlib.sha256(der).hexdigest(), sans
+    common_names = tuple(
+        _hostname(value, field=f"live certificate common name for {hostname}")
+        for rdn in certificate.get("subject", ())
+        for key, value in rdn
+        if key == "commonName"
+    )
+    if len(common_names) != 1:
+        raise ValueError(
+            f"{hostname}:{port} must return exactly one subject common name"
+        )
+    return hashlib.sha256(der).hexdigest(), sans, common_names[0]
 
 
 def verify_live_bindings(
@@ -160,7 +195,7 @@ def verify_live_bindings(
         reference_fingerprint: str | None = None
         for domain in domains:
             try:
-                fingerprint, sans = fetcher(domain, port, timeout)
+                fingerprint, sans, common_name = fetcher(domain, port, timeout)
             except (OSError, ssl.SSLError, ValueError) as exc:
                 raise ValueError(
                     f"live TLS verification failed for {domain} bound to {reference}: {exc}"
@@ -169,6 +204,18 @@ def verify_live_bindings(
                 raise ValueError(
                     f"live certificate for {domain} bound to {reference} does not cover the hostname"
                 )
+            _reject_gateway_identity(
+                common_name,
+                field=f"live certificate common name for {domain}",
+            )
+            if not any(
+                certificate_covers(bound_domain, common_name)
+                for bound_domain in domains
+            ):
+                raise ValueError(
+                    f"live certificate common name {common_name} for {domain} "
+                    "does not identify an application hostname bound to the certificate"
+                )
             if reference_fingerprint is None:
                 reference_fingerprint = fingerprint
             elif fingerprint != reference_fingerprint:
@@ -176,7 +223,9 @@ def verify_live_bindings(
                     f"proxy hostnames bound to {reference} serve different live certificates"
                 )
         if reference_fingerprint is None:
-            raise ValueError(f"certificate reference {reference} has no proxy hostnames")
+            raise ValueError(
+                f"certificate reference {reference} has no proxy hostnames"
+            )
         fingerprints[reference] = reference_fingerprint
     return fingerprints
 
