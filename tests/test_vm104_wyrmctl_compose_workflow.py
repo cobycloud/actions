@@ -32,12 +32,23 @@ def test_vm104_workflow_checks_out_shared_actions_before_local_use() -> None:
 
     assert text.count("repository: cobycloud/actions") == 2
     assert text.count("path: .cobycloud-actions") == 2
-    shared_ref = "279d961ee3d01c42ed019e9fbb6f883af44d854f"
+    shared_ref = "8a2e558cfed9b64e4be4c656d9e3c436ed3156e1"
     assert text.count(f"ref: {shared_ref}") == 2
     assert re.fullmatch(r"[0-9a-f]{40}", shared_ref)
     assert "ref: ${{ github.workflow_sha }}" not in text
     assert text.count("persist-credentials: false") >= 2
     assert text.count("./.cobycloud-actions/actions/wyrmctl-setup") == 2
+
+
+def test_vm104_workflow_supports_immutable_external_workload_source() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert 'source-repository: {type: string, required: false, default: ""}' in text
+    assert 'source-ref: {type: string, required: false, default: ""}' in text
+    assert text.count("Checkout immutable workload source") == 2
+    assert text.count("repository: ${{ inputs.source-repository }}") == 2
+    assert text.count("ref: ${{ inputs.source-ref }}") == 2
+    assert "git -C '${{ inputs.source-path }}' rev-parse HEAD" in text
 
 
 def test_vm104_workflow_materializes_portwyrm_runtime_context() -> None:
