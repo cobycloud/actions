@@ -106,6 +106,16 @@ def test_rejects_portwyrm_gateway_as_primary_certificate_identity() -> None:
         )
 
 
+def test_accepts_portwyrm_product_domain_as_application_identity() -> None:
+    MODULE.validate_document(
+        desired_state(
+            proxy_domains=["portwyrm.com", "www.portwyrm.com"],
+            certificate_domains=["portwyrm.com", "www.portwyrm.com"],
+        ),
+        "portwyrm.com",
+    )
+
+
 def test_live_verification_checks_every_domain_bound_to_one_certificate() -> None:
     observed: list[str] = []
 

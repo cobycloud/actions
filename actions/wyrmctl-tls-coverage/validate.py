@@ -36,9 +36,17 @@ def certificate_covers(hostname: str, certificate_name: str) -> bool:
     )
 
 
-def _reject_gateway_identity(hostname: str, *, field: str) -> None:
-    first_label = _hostname(hostname, field=field).split(".", 1)[0]
+def _reject_gateway_identity(
+    hostname: str,
+    *,
+    field: str,
+    application_domains: tuple[str, ...] = (),
+) -> None:
+    identity = _hostname(hostname, field=field)
+    first_label = identity.split(".", 1)[0]
     if first_label == "portwyrm" or first_label.startswith("portwyrm-"):
+        if any(certificate_covers(domain, identity) for domain in application_domains):
+            return
         raise ValueError(
             f"{field} must identify the application, not a Portwyrm gateway"
         )
@@ -80,10 +88,6 @@ def validate_document(document: object, public_host: str) -> dict[str, tuple[str
             raise ValueError(
                 f"certificate {resource_id} must cover at least one domain"
             )
-        _reject_gateway_identity(
-            domains[0],
-            field=f"certificate {resource_id} primary domain",
-        )
         if resource_id in certificates:
             raise ValueError(f"duplicate certificate resource_id: {resource_id}")
         certificates[resource_id] = domains
@@ -136,6 +140,12 @@ def validate_document(document: object, public_host: str) -> dict[str, tuple[str
     if requested_public_host not in observed_public_hosts:
         raise ValueError(
             f"public-host {requested_public_host} is not declared by spec.proxyHosts.domain_names"
+        )
+    for reference, application_domains in certificate_bindings.items():
+        _reject_gateway_identity(
+            certificates[reference][0],
+            field=f"certificate {reference} primary domain",
+            application_domains=tuple(sorted(application_domains)),
         )
     return {
         reference: tuple(sorted(domains))
@@ -207,6 +217,7 @@ def verify_live_bindings(
             _reject_gateway_identity(
                 common_name,
                 field=f"live certificate common name for {domain}",
+                application_domains=domains,
             )
             if not any(
                 certificate_covers(bound_domain, common_name)
