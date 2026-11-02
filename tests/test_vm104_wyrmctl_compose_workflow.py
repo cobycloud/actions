@@ -32,6 +32,7 @@ def test_vm104_workflow_checks_out_shared_actions_before_local_use() -> None:
 
     assert text.count("repository: cobycloud/actions") == 2
     assert text.count("path: .cobycloud-actions") == 2
+    assert text.count("ref: ${{ github.workflow_sha }}") == 2
     assert text.count("persist-credentials: false") >= 2
     assert text.count("./.cobycloud-actions/actions/wyrmctl-setup") == 2
 
@@ -43,6 +44,23 @@ def test_vm104_workflow_materializes_portwyrm_runtime_context() -> None:
     assert text.count('eq .Destination "/etc/letsencrypt"') == 2
     assert text.count('echo "PUBLIC_HOST=$REQUESTED_PUBLIC_HOST" >> "$GITHUB_ENV"') == 2
     assert text.count('echo "PORTWYRM_CERT_PATH=$cert_path" >> "$GITHUB_ENV"') == 2
+
+
+def test_vm104_workflow_validates_tls_coverage_before_plan_and_apply() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert text.count("actions/wyrmctl-tls-coverage") == 2
+    assert text.count("desired-state: ${{ inputs.desired-state }}") == 3
+    assert text.count("public-host: ${{ inputs.public-host }}") == 2
+
+
+def test_vm104_workflow_verifies_strict_https_and_served_san() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert "--proto '=https' --tlsv1.2" in text
+    assert "--insecure" not in text
+    assert " -k " not in text
+    assert 'grep -Fq "DNS:$PUBLIC_HOST"' in text
 
 
 def test_vm104_workflow_collects_container_diagnostics_on_failure() -> None:
