@@ -40,7 +40,7 @@ jobs:
         with:
           repository: cobycloud/actions
           # Reusable-workflow github.workflow_sha is the caller SHA, not this repository.
-          ref: 13c1e26e7758aa55a861eb1e4afbf79ca21d3cd4
+          ref: 1f67ac678f115a88f69e5ed8b149a70ab6c374b3
           path: .cobycloud-actions
           persist-credentials: false
       - if: ${{ inputs.tigrbl-ref != '' }}
@@ -150,7 +150,7 @@ jobs:
         with:
           repository: cobycloud/actions
           # Reusable-workflow github.workflow_sha is the caller SHA, not this repository.
-          ref: 13c1e26e7758aa55a861eb1e4afbf79ca21d3cd4
+          ref: 1f67ac678f115a88f69e5ed8b149a70ab6c374b3
           path: .cobycloud-actions
           persist-credentials: false
       - if: ${{ inputs.tigrbl-ref != '' }}
