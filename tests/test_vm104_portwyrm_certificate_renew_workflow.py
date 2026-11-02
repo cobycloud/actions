@@ -9,7 +9,8 @@ def test_renewal_is_confirmation_gated_and_owner_scoped() -> None:
 
     assert 'test "$CONFIRMATION" = "RENEW $CERTIFICATE_RESOURCE_ID"' in text
     assert "actions/portwyrm-certificate-renew/validate_scope.py" in text
-    assert "live.get(\"domain_names\") != expected_domains" in text
+    assert "not domain_sets_match(expected_domains, live_domains)" in text
+    assert "not domain_sets_match(expected_domains, renewed.get(\"domain_names\"))" in text
     assert 'environment: deployment' in text
 
 

@@ -87,6 +87,7 @@ jobs:
           import hashlib
           import json
           import os
+          import runpy
           import socket
           import ssl
           import sys
@@ -106,6 +107,10 @@ jobs:
               and item.get("meta", {}).get("resource_id") == resource_id
           )
           expected_domains = certificate["domain_names"]
+          scope_helpers = runpy.run_path(
+              ".cobycloud-actions/actions/portwyrm-certificate-renew/validate_scope.py"
+          )
+          domain_sets_match = scope_helpers["domain_sets_match"]
           base_url = os.environ["PORTWYRM_BASE_URL"].rstrip("/")
           session = requests.Session()
           auth_response = session.post(
@@ -147,9 +152,10 @@ jobs:
           live = matches[0]
           if live.get("provider") != "letsencrypt":
               raise SystemExit("refusing to renew a non-letsencrypt certificate")
-          if live.get("domain_names") != expected_domains:
+          live_domains = live.get("domain_names")
+          if not domain_sets_match(expected_domains, live_domains):
               raise SystemExit(
-                  "live certificate domains do not exactly match reviewed desired state; "
+                  "live certificate domain set does not exactly match reviewed desired state; "
                   "apply the reviewed Wyrmctl plan before renewal"
               )
           renewal = session.post(
@@ -160,8 +166,8 @@ jobs:
           renewal.raise_for_status()
           renewed_payload = renewal.json()
           renewed = renewed_payload.get("result", renewed_payload)
-          if renewed.get("domain_names") != expected_domains:
-              raise SystemExit("renewed certificate domains do not match reviewed state")
+          if not domain_sets_match(expected_domains, renewed.get("domain_names")):
+              raise SystemExit("renewed certificate domain set does not match reviewed state")
 
           fingerprints = {}
           context = ssl.create_default_context()

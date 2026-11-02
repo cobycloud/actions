@@ -8,6 +8,35 @@ from typing import Any
 import yaml
 
 
+def normalized_domain_set(domains: object, *, field: str) -> frozenset[str]:
+    """Return a unique IDNA/case-normalized domain set for equality checks."""
+
+    if not isinstance(domains, list) or not domains:
+        raise ValueError(f"{field} must contain at least one domain")
+    normalized: list[str] = []
+    for domain in domains:
+        if not isinstance(domain, str) or not domain.strip():
+            raise ValueError(f"{field} domains must be non-empty strings")
+        candidate = domain.strip().rstrip(".")
+        if not candidate:
+            raise ValueError(f"{field} domains must be non-empty strings")
+        try:
+            normalized.append(candidate.encode("idna").decode("ascii").casefold())
+        except UnicodeError as exc:
+            raise ValueError(f"{field} contains an invalid IDNA domain") from exc
+    if len(normalized) != len(set(normalized)):
+        raise ValueError(f"{field} domains must be unique after normalization")
+    return frozenset(normalized)
+
+
+def domain_sets_match(reviewed_domains: object, live_domains: object) -> bool:
+    """Compare two unique non-empty domain sets without depending on list order."""
+
+    reviewed = normalized_domain_set(reviewed_domains, field="reviewed certificate")
+    live = normalized_domain_set(live_domains, field="live certificate")
+    return len(live) == len(reviewed) and live == reviewed
+
+
 def certificate_provider(certificate: dict[str, Any]) -> str:
     """Resolve the provider from supported Wyrmctl certificate representations."""
 
@@ -58,13 +87,7 @@ def validate_scope(
             f"resolved provider was {provider or 'unset'}"
         )
     domains = certificate.get("domain_names", [])
-    if (
-        not isinstance(domains, list)
-        or not domains
-        or any(not isinstance(domain, str) or not domain.strip() for domain in domains)
-        or len(domains) != len(set(domains))
-    ):
-        raise ValueError("certificate domains must be present, non-empty, and unique")
+    normalized_domain_set(domains, field="reviewed certificate")
     return {
         "desired_state": str(desired_path),
         "owner": expected_owner,
