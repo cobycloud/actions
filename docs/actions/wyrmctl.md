@@ -9,5 +9,12 @@ The actions accept credentials as inputs but never persist them. Wyrmctl retains
 upstream `NPM_BASE_URL`, `NPM_IDENTITY`, and `NPM_SECRET` environment contract while
 talking to the Portwyrm-compatible API.
 
-`wyrmctl-setup` defaults to Wyrmctl `0.4.5`. Consumers may override the exact version,
+`wyrmctl-setup` defaults to Wyrmctl `0.4.7`. Consumers may override the exact version,
 but deployment workflows should pin this repository to a reviewed immutable commit.
+
+The reusable VM104 Compose workflow invokes `wyrmctl-tls-coverage` before both
+planning and applying. Every proxy hostname must be covered by the certificate
+referenced by that proxy, and the declared `public-host` must be one of those
+proxy hostnames. Exact names and single-label DNS wildcards are supported. The
+post-deploy check uses strict HTTPS validation and confirms that the certificate
+served for the requested SNI hostname contains that hostname in its SANs.

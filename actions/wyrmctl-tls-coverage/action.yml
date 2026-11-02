@@ -1,0 +1,20 @@
+name: Validate Wyrmctl TLS Coverage
+description: Fail when a public proxy hostname is not covered by its bound certificate.
+inputs:
+  desired-state:
+    description: Path to the Wyrmctl desired-state YAML file.
+    required: true
+  public-host:
+    description: Public hostname that the deployment must expose.
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        DESIRED_STATE: ${{ inputs.desired-state }}
+        PUBLIC_HOST: ${{ inputs.public-host }}
+      run: >-
+        python "${{ github.action_path }}/validate.py"
+        --desired-state "$DESIRED_STATE"
+        --public-host "$PUBLIC_HOST"
