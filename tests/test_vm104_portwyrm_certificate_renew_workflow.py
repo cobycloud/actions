@@ -8,10 +8,15 @@ def test_renewal_is_confirmation_gated_and_owner_scoped() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 
     assert 'test "$CONFIRMATION" = "RENEW $CERTIFICATE_RESOURCE_ID"' in text
-    assert 'item.get("meta", {}).get("owner") == owner' in text
-    assert 'item.get("meta", {}).get("resource_id") == resource_id' in text
+    assert "actions/portwyrm-certificate-renew/validate_scope.py" in text
     assert "live.get(\"domain_names\") != expected_domains" in text
     assert 'environment: deployment' in text
+
+
+def test_preflight_artifact_upload_does_not_mask_validation_failure() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert "if-no-files-found: warn" in text
 
 
 def test_renewal_uses_portwyrm_force_reissue_without_deletion() -> None:

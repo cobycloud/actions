@@ -18,7 +18,7 @@ The actions accept credentials as inputs but never persist them. Wyrmctl retains
 upstream `NPM_BASE_URL`, `NPM_IDENTITY`, and `NPM_SECRET` environment contract while
 talking to the Portwyrm-compatible API.
 
-`wyrmctl-setup` defaults to Wyrmctl `0.4.7`. Consumers may override the exact version,
+`wyrmctl-setup` defaults to Wyrmctl `0.4.8`. Consumers may override the exact version,
 but deployment workflows should pin this repository to a reviewed immutable commit.
 
 The reusable VM104 Compose workflow invokes `wyrmctl-tls-coverage` before both
