@@ -163,6 +163,19 @@ jobs:
               params={"force": "true"},
               timeout=180,
           )
+          if not renewal.ok:
+              detail = renewal.text[:4000]
+              for field in ("password", "secret", "token", "private_key"):
+                  detail = __import__("re").sub(
+                      rf'(?i)(["\\\']?{field}["\\\']?\\s*[:=]\\s*)[^,}}\\s]+',
+                      rf'\\1[REDACTED]',
+                      detail,
+                  )
+              print(
+                  f"Portwyrm certificate renewal rejected with HTTP "
+                  f"{renewal.status_code}: {detail}",
+                  file=sys.stderr,
+              )
           renewal.raise_for_status()
           renewed_payload = renewal.json()
           renewed = renewed_payload.get("result", renewed_payload)
