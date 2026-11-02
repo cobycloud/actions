@@ -74,3 +74,36 @@ def test_rejects_non_letsencrypt_provider(tmp_path: Path) -> None:
             "tigrbl-memdedupe-engine-demo",
             "cert.tigrbl-memdedupe-engine-demo",
         )
+
+
+def test_domain_set_accepts_reversed_live_order_and_normalized_names() -> None:
+    assert MODULE.domain_sets_match(
+        ["memdedupe.engine-demo.tigrbl.dev", "dedupe.engine-demo.tigrbl.dev"],
+        ["DEDUPE.engine-demo.tigrbl.dev.", "memdedupe.engine-demo.tigrbl.dev"],
+    )
+
+
+@pytest.mark.parametrize(
+    "live_domains",
+    [
+        ["memdedupe.engine-demo.tigrbl.dev"],
+        [
+            "memdedupe.engine-demo.tigrbl.dev",
+            "dedupe.engine-demo.tigrbl.dev",
+            "extra.engine-demo.tigrbl.dev",
+        ],
+    ],
+)
+def test_domain_set_refuses_missing_or_extra_live_domain(live_domains: list[str]) -> None:
+    assert not MODULE.domain_sets_match(
+        ["memdedupe.engine-demo.tigrbl.dev", "dedupe.engine-demo.tigrbl.dev"],
+        live_domains,
+    )
+
+
+def test_domain_set_refuses_duplicate_after_normalization() -> None:
+    with pytest.raises(ValueError, match="unique after normalization"):
+        MODULE.normalized_domain_set(
+            ["dedupe.engine-demo.tigrbl.dev", "DEDUPE.engine-demo.tigrbl.dev."],
+            field="live certificate",
+        )
