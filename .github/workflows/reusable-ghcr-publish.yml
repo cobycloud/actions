@@ -154,11 +154,28 @@ jobs:
         run: cosign sign --yes "$IMAGE@$DIGEST"
 
       - name: Attest immutable GHCR provenance
+        if: inputs.visibility == 'public'
         uses: actions/attest@v4
         with:
           subject-name: ${{ inputs.image }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+
+      - name: Attest private BuildKit provenance in the registry
+        if: inputs.visibility == 'private'
+        env:
+          BUILD_METADATA: ${{ steps.push.outputs.metadata }}
+          IMAGE: ${{ inputs.image }}@${{ steps.push.outputs.digest }}
+        shell: python
+        run: |
+          import json, os, pathlib, subprocess
+          predicate = json.loads(os.environ['BUILD_METADATA']).get('buildx.build.provenance')
+          if not isinstance(predicate, dict) or not predicate.get('buildType'):
+              raise SystemExit('Missing actual BuildKit provenance')
+          path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'private-build-provenance.json'
+          path.write_text(json.dumps(predicate))
+          subprocess.run(['cosign', 'attest', '--yes', '--type', 'slsaprovenance',
+                          '--predicate', str(path), os.environ['IMAGE']], check=True)
 
       - name: Pull the public immutable image without registry credentials
         if: inputs.visibility == 'public'
@@ -209,6 +226,7 @@ jobs:
           --certificate-oidc-issuer https://token.actions.githubusercontent.com
 
       - name: Verify GitHub build provenance
+        if: inputs.visibility == 'public'
         env:
           GH_TOKEN: ${{ github.token }}
           IMAGE: ${{ inputs.image }}@${{ steps.push.outputs.digest }}
@@ -218,3 +236,21 @@ jobs:
           --repo "${{ github.repository }}"
           --bundle-from-oci
           --signer-repo cobycloud/actions
+
+      - name: Verify private signed build provenance
+        if: inputs.visibility == 'private'
+        env:
+          IMAGE: ${{ inputs.image }}@${{ steps.push.outputs.digest }}
+          CERTIFICATE_IDENTITY_REGEXP: ${{ inputs.certificate-identity-regexp }}
+        shell: python
+        run: |
+          import base64, json, os, subprocess
+          result = subprocess.check_output([
+              'cosign', 'verify-attestation', '--type', 'slsaprovenance',
+              '--certificate-identity-regexp', os.environ['CERTIFICATE_IDENTITY_REGEXP'],
+              '--certificate-oidc-issuer', 'https://token.actions.githubusercontent.com', os.environ['IMAGE'],
+          ], text=True)
+          statements = [json.loads(base64.b64decode(json.loads(line)['payload']))
+                        for line in result.splitlines() if line.strip()]
+          if not statements or not all(s.get('predicate', {}).get('buildType') for s in statements):
+              raise SystemExit('Missing verified build provenance predicate')

@@ -54,3 +54,7 @@ jobs:
 | `package-api-path` | empty | Optional GitHub API path for package access preflight. |
 
 The workflow intentionally contains no package deletion or pruning behavior.
+
+Private mode signs the actual BuildKit provenance predicate into GHCR and
+verifies that signed attestation there. It does not require the paid private
+GitHub hosted-attestation feature. Public mode retains GitHub attestations.

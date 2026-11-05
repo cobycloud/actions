@@ -53,6 +53,14 @@ class PrivatePublication(unittest.TestCase):
         self.assertIn("if: inputs.visibility == 'private'", workflow)
         self.assertIn('default: public', workflow)
 
+    def test_private_provenance_does_not_depend_on_paid_github_attestations(self):
+        workflow = WORKFLOW.read_text()
+        public = workflow.split('      - name: Attest immutable GHCR provenance', 1)[1]
+        self.assertTrue(public.lstrip().startswith("if: inputs.visibility == 'public'"))
+        self.assertIn(".get('buildx.build.provenance')", workflow)
+        self.assertIn("'cosign', 'attest'", workflow)
+        self.assertIn("'cosign', 'verify-attestation'", workflow)
+
 
 if __name__ == '__main__':
     unittest.main()
