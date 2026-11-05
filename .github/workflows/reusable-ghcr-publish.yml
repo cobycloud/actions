@@ -11,6 +11,11 @@ on:
         description: Fully qualified GHCR image name.
         type: string
         required: true
+      visibility:
+        description: Expected GHCR visibility; private verifies anonymous denial and authenticated pulls.
+        type: string
+        required: false
+        default: public
       context:
         description: Docker build context.
         type: string
@@ -65,6 +70,15 @@ jobs:
       digest: ${{ steps.push.outputs.digest }}
     steps:
       - uses: actions/checkout@v5
+
+      - name: Validate requested visibility
+        env:
+          VISIBILITY: ${{ inputs.visibility }}
+        shell: python
+        run: |
+          import os
+          if os.environ['VISIBILITY'] not in {'public', 'private'}:
+              raise SystemExit('visibility must be public or private')
 
       - name: Validate release tag
         id: release
@@ -147,12 +161,42 @@ jobs:
           push-to-registry: true
 
       - name: Pull the public immutable image without registry credentials
+        if: inputs.visibility == 'public'
         env:
           IMAGE: ${{ inputs.image }}@${{ steps.push.outputs.digest }}
         shell: bash
         run: |
           docker logout ghcr.io
           docker pull "$IMAGE"
+
+      - name: Verify private package and pull boundaries
+        if: inputs.visibility == 'private'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ${{ inputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        shell: python
+        run: |
+          import json, os, subprocess, tempfile
+          image = os.environ['IMAGE']
+          owner, package = image.removeprefix('ghcr.io/').split('/', 1)
+          from urllib.parse import quote
+          path = f'/orgs/{owner}/packages/container/{quote(package, safe="")}'
+          metadata = json.loads(subprocess.check_output(['gh', 'api', path], text=True))
+          if metadata['visibility'] != 'private':
+              raise SystemExit('Expected a private GHCR package; refusing to continue')
+          reference = image + '@' + os.environ['DIGEST']
+          with tempfile.TemporaryDirectory() as directory:
+              result = subprocess.run(
+                  ['docker', '--config', directory, 'pull', reference],
+                  capture_output=True, text=True,
+              )
+              if result.returncode == 0:
+                  raise SystemExit('Private image unexpectedly allowed anonymous pulls')
+              if not any(word in (result.stdout + result.stderr).lower()
+                         for word in ('unauthorized', 'denied', 'authentication required')):
+                  raise SystemExit('Anonymous pull failed without an authentication denial')
+          subprocess.run(['docker', 'pull', reference], check=True)
 
       - name: Verify the keyless image signature
         env:

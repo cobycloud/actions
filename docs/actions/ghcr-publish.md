@@ -43,6 +43,7 @@ jobs:
 | Input | Default | Description |
 | --- | --- | --- |
 | `image` | required | Fully qualified GHCR image name. |
+| `visibility` | `public` | Expected package visibility. `private` requires private package metadata, anonymous authentication denial, and a successful authenticated immutable pull. |
 | `certificate-identity-regexp` | required | Expected keyless-signing identity for the caller workflow. |
 | `runner` | `ubuntu-latest` | GitHub runner label. |
 | `context` | `.` | Docker build context. |
