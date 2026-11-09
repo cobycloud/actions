@@ -7,6 +7,16 @@ on:
         type: string
         required: false
         default: ubuntu-latest
+      docker-api-version:
+        description: Optional Docker API version for runners with an older daemon.
+        type: string
+        required: false
+        default: ''
+      setup-qemu:
+        description: Install cross-architecture emulation when the target needs it.
+        type: boolean
+        required: false
+        default: true
       image:
         description: Fully qualified GHCR image name.
         type: string
@@ -71,6 +81,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Configure runner Docker compatibility
+        if: inputs.docker-api-version != ''
+        env:
+          REQUESTED_API_VERSION: ${{ inputs.docker-api-version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$REQUESTED_API_VERSION" =~ ^[0-9]+[.][0-9]+$ ]]
+          DOCKER_API_VERSION="$REQUESTED_API_VERSION" docker version --format '{{.Server.Version}}'
+          echo "DOCKER_API_VERSION=$REQUESTED_API_VERSION" >> "$GITHUB_ENV"
+
       - name: Validate requested visibility
         env:
           VISIBILITY: ${{ inputs.visibility }}
@@ -105,6 +126,7 @@ jobs:
           fi
 
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        if: inputs.setup-qemu
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: sigstore/cosign-installer@v3
 
