@@ -81,6 +81,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        if: inputs.docker-api-version != ''
+        with:
+          python-version: '3.12'
+
       - name: Configure runner Docker compatibility
         if: inputs.docker-api-version != ''
         env:
@@ -220,8 +225,14 @@ jobs:
           image = os.environ['IMAGE']
           owner, package = image.removeprefix('ghcr.io/').split('/', 1)
           from urllib.parse import quote
+          from urllib.request import Request, urlopen
           path = f'/orgs/{owner}/packages/container/{quote(package, safe="")}'
-          metadata = json.loads(subprocess.check_output(['gh', 'api', path], text=True))
+          request = Request(os.environ['GITHUB_API_URL'] + path, headers={
+              'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+              'Accept': 'application/vnd.github+json',
+          })
+          with urlopen(request, timeout=20) as response:
+              metadata = json.load(response)
           if metadata['visibility'] != 'private':
               raise SystemExit('Expected a private GHCR package; refusing to continue')
           reference = image + '@' + os.environ['DIGEST']

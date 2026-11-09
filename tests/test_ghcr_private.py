@@ -1,4 +1,5 @@
 """Execute the private publication boundary check with registry responses mocked."""
+import io
 import json
 import os
 from pathlib import Path
@@ -23,8 +24,9 @@ class PrivatePublication(unittest.TestCase):
                 return subprocess.CompletedProcess(args, anonymous_code, '', error)
             return subprocess.CompletedProcess(args, 0)
 
-        with patch.dict(os.environ, {'IMAGE': 'ghcr.io/groupsum/envelope-relay-api', 'DIGEST': 'sha256:abc'}), \
-                patch('subprocess.check_output', return_value=json.dumps({'visibility': visibility})), \
+        with patch.dict(os.environ, {'IMAGE': 'ghcr.io/groupsum/envelope-relay-api', 'DIGEST': 'sha256:abc',
+                                     'GITHUB_API_URL': 'https://api.github.com', 'GH_TOKEN': 'fixture'}), \
+                patch('urllib.request.urlopen', return_value=io.StringIO(json.dumps({'visibility': visibility}))), \
                 patch('subprocess.run', side_effect=run):
             exec(compile(textwrap.dedent(source), 'private-check', 'exec'), {})
         return calls
